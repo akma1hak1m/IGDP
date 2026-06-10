@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/png" href="{% static 'images/logomysa.png' %}">
+    <title>DATA GEOSPATIAL BERSEPADU MYSA</title>
+    <link rel="stylesheet" href="{% static 'css/templatemo-nexaverse.css' %}">
+</head>
+<body>
+
+<div class="ambient-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+</div>
+
+<div class="grid-overlay"></div>
+
+<div class="container">
+
+{% if request.path != '/' %}
+
+<nav class="glass-card nav-bar">
+
+<div class="nav-left">
+
+<a href="{% url 'home' %}">Laman Utama</a>
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "Staff" %}
+        <a href="{% url 'borang_serahan' %}">Borang Serahan</a>
+        <a href="{% url 'borang_pinjaman' %}">Borang Pinjaman</a>
+    {% endif %}
+{% endfor %}
+
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "PIC" or group.name == "Staff" %}
+        <a href="{% url 'status' %}">Status Permohonan</a>
+    {% endif %}
+{% endfor %}
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "PIC" %}
+        <a href="{% url 'statistics' %}">Statistik</a>
+    {% endif %}
+{% endfor %}
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "PIC" or group.name == "Admin" or group.name == "Pengarah Bahagian" or group.name == "Pengarah BITG" %}
+        <a href="{% url 'admin_borang' %}">Semakan Borang</a>
+    {% endif %}
+{% endfor %}
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "Pengarah Bahagian" or group.name == "Pengarah BITG" %}
+        <a href="{% url 'pengarah_dashboard' %}">Papan Kelulusan</a>
+    {% endif %}
+{% endfor %}
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "Pengarah BITG" %}
+        <a href="{% url 'assign_pic_page' %}">Penugasan PIC</a>
+    {% endif %}
+{% endfor %}
+
+</div>
+
+<div class="nav-right">
+<a href="{% url 'logout' %}">Log Keluar</a>
+</div>
+
+</nav>
+
+{% endif %}
+
+{% block content %}
+{% endblock %}
+
+</div>
+
+<script src="{% static 'js/templatemo-nexa-scripts.js' %}"></script>
+
+
+</body>
+</html>

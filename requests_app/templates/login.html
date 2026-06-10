@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="header">
+    <img src="{% static 'images/logomysa.png' %}" class="hero-logo fade-in fade-delay-1">
+
+    <h1 class="brand-name">AGENSI ANGKASA MALAYSIA</h1>
+    <h1 class="brand-name">(MYSA)</h1>
+
+    <p class="tagline">DATA GEOSPATIAL BERSEPADU</p>
+</div>
+
+
+    {% if error %}
+    <div class="error-popup" id="errorPopup">
+        ❌ Wrong username or password
+    </div>
+    {% endif %}
+
+    <div class="glass-card login-card">
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <input type="text" name="username" placeholder="Username" required>
+        </div>
+
+        <div class="form-group">
+            <input type="password" name="password" placeholder="Password" required>
+        </div>
+
+        <button type="submit" class="submit-btn login-btn">
+            Log Masuk
+        </button>
+
+        <div class="auth-links">
+
+    <a href="{% url 'register' %}" class="clean-link">
+        Daftar Akaun
+    </a>
+
+    <span class="divider">|</span>
+
+    <a href="{% url 'forgot_password' %}" class="clean-link">
+        Lupa Kata Laluan?
+    </a>
+
+</div>
+
+    </form>
+
+</div>
+
+{% if error %}
+<script>
+window.addEventListener("load", function () {
+    const popup = document.getElementById("errorPopup");
+    if(!popup) return;
+
+    popup.style.opacity = "1";
+    popup.style.transform = "translateX(-50%) translateY(0)";
+
+    setTimeout(() => {
+        popup.style.opacity = "0";
+        popup.style.transform = "translateX(-50%) translateY(-20px)";
+    }, 3000);
+});
+</script>
+{% endif %}
+
+{% if messages %}
+<script>
+window.addEventListener("load", function () {
+
+    {% for message in messages %}
+    const popup = document.createElement("div");
+    popup.className = "success-popup";
+    popup.innerHTML = "✅ {{ message }}";
+
+    document.body.appendChild(popup);
+
+    setTimeout(() => {
+        popup.style.opacity = "1";
+        popup.style.transform = "translateX(-50%) translateY(0)";
+    }, 100);
+
+    setTimeout(() => {
+        popup.style.opacity = "0";
+        popup.style.transform = "translateX(-50%) translateY(-20px)";
+    }, 3000);
+    {% endfor %}
+
+});
+</script>
+{% endif %}
+
+{% endblock %}

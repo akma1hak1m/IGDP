@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="glass-card form-card fade-in fade-delay-2">
+
+<h2 class="flow-title">BORANG SERAHAN DATA</h2>
+
+<form method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="divider-line"></div>
+
+<!-- SECTION 1 -->
+<div class="form-section">
+
+<h3 class="section-title">1. Details Pemohon</h3>
+
+<div class="form-grid-2">
+
+<div class="form-group">
+<label>Nama Penuh</label>
+<input type="text" name="namapemohon">
+</div>
+
+<div class="form-group">
+<label>Email</label>
+<input type="text" name="email">
+</div>
+
+<div class="form-group">
+<label>No. Telefon</label>
+<input type="text" name="telefon">
+</div>
+
+
+</div>
+</div>
+
+<div class="divider-line"></div>
+
+<!-- SECTION 1 -->
+<div class="form-section">
+
+<h3 class="section-title">2. Komponen & Jenis Data</h3>
+
+<div class="data-grid">
+
+<div class="data-box">
+<h4>DATA ASAS</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri"> Sempadan Negeri</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Daerah"> Sempadan Daerah</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Mukim"> Sempadan Mukim</label>
+<label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan"> Nama Bandar / Pekan</label>
+<label><input type="checkbox" name="komponen_data" value="Kontur"> Kontur</label>
+<label><input type="checkbox" name="komponen_data" value="Cerun"> Cerun</label>
+<label><input type="checkbox" name="komponen_data" value="DEM"> DEM</label>
+<label><input type="checkbox" name="komponen_data" value="Titik Ketinggian"> Titik Ketinggian</label>
+<label><input type="checkbox" name="komponen_data" value="Jalan"> Jalan</label>
+<label><input type="checkbox" name="komponen_data" value="Jalan Keretapi"> Jalan Keretapi</label>
+<label><input type="checkbox" name="komponen_data" value="Sungai"> Sungai</label>
+
+</div>
+
+<div class="data-box">
+<h4>FASILITI</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Sekolah"> Sekolah</label>
+<label><input type="checkbox" name="komponen_data" value="Hospital"> Hospital</label>
+<label><input type="checkbox" name="komponen_data" value="Klinik/Pusat Perubatan"> Klinik/Pusat Perubatan</label>
+<label><input type="checkbox" name="komponen_data" value="Bangunan Kerajaan"> Bangunan Kerajaan</label>
+<label><input type="checkbox" name="komponen_data" value="Rumah Ibadat"> Rumah Ibadat</label>
+<label><input type="checkbox" name="komponen_data" value="Balai Polis"> Balai Polis</label>
+<label><input type="checkbox" name="komponen_data" value="Balai Bomba"> Balai Bomba</label>
+<label><input type="checkbox" name="komponen_data" value="Stesen KTM"> Stesen KTM</label>
+
+</div>
+
+<div class="data-box">
+<h4>PERTANIAN</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Guna Tanah"> Guna Tanah</label>
+<label><input type="checkbox" name="komponen_data" value="Jenis Tanih"> Jenis Tanih</label>
+<label><input type="checkbox" name="komponen_data" value="Agroklimatik"> Agroklimatik</label>
+<label><input type="checkbox" name="komponen_data" value="Hujan"> Hujan</label>
+<label><input type="checkbox" name="komponen_data" value="Litupan Tanah"> Litupan Tanah</label>
+
+</div>
+
+<div class="data-box">
+<h4>PERHUTANAN</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Kompartment"> Kompartment</label>
+<label><input type="checkbox" name="komponen_data" value="Fungsi"> Fungsi</label>
+<label><input type="checkbox" name="komponen_data" value="Sumber"> Sumber</label>
+<label><input type="checkbox" name="komponen_data" value="Lembangan"> Lembangan</label>
+<label><input type="checkbox" name="komponen_data" value="Empangan"> Empangan</label>
+
+</div>
+
+<div class="data-box">
+<h4>GEOLOGI</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Geomorfologi"> Geomorfologi</label>
+<label><input type="checkbox" name="komponen_data" value="Lithologi"> Lithologi</label>
+<label><input type="checkbox" name="komponen_data" value="Struktur"> Struktur</label>
+<label><input type="checkbox" name="komponen_data" value="Landslide Prone Area"> Landslide Prone Area</label>
+
+</div>
+
+<div class="data-box">
+<h4>PESISIR</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Batimetri"> Batimetri</label>
+<label><input type="checkbox" name="komponen_data" value="Geomorfologi_G"> Geomorfologi</label>
+<label><input type="checkbox" name="komponen_data" value="Landform"> Landform</label>
+<label><input type="checkbox" name="komponen_data" value="Pengangkutan"> Pengangkutan</label>
+<label><input type="checkbox" name="komponen_data" value="Tumbuhan"> Tumbuhan</label>
+
+</div>
+
+<div class="data-box">
+<h4>BANJIR</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Stesen Hidrologi"> Stesen Hidrologi</label>
+<label><input type="checkbox" name="komponen_data" value="Pusat Pemindahan"> Pusat Pemindahan</label>
+<label><input type="checkbox" name="komponen_data" value="Flood Prone Area"> Flood Prone Area</label>
+
+</div>
+
+<div class="data-box">
+<h4>SOSIO EKONOMI</h4>
+
+<label><input type="checkbox" name="komponen_data" value="Demografi/Penduduk"> Demografi/Penduduk</label>
+
+</div>
+
+<div class="data-box">
+<h4>LAIN-LAIN</h4>
+<input type="text" name="komponen_lain" placeholder="Nyatakan jika lain-lain">
+</div>
+
+</div>
+
+</div>
+
+<div class="divider-line"></div>
+
+<!-- SECTION 2 -->
+<h3 class="section-title">3. Kawasan</h3>
+
+<div class="form-grid-3">
+
+<div class="form-group">
+<label>Negeri</label>
+<select name="negeri" id="negeri" required>
+<option value="">-- Pilih Negeri --</option>
+
+{% for n in negeri_list %}
+<option value="{{ n.nama }}">{{ n.nama }}</option>
+{% endfor %}
+
+</select>
+</div>
+
+<div class="form-group">
+<label>Daerah</label>
+
+<select id="daerah" name="daerah" required>
+<option value="">-- Pilih Daerah --</option>
+</select>
+
+<input type="text"
+id="daerah_lain"
+name="daerah_lain"
+placeholder="Masukkan Daerah"
+style="display:none; margin-top:10px;">
+</div>
+
+
+<div class="form-group">
+<label>Mukim</label>
+
+<select id="mukim" name="mukim" required>
+<option value="">-- Pilih Mukim --</option>
+</select>
+
+<input type="text"
+id="mukim_lain"
+name="mukim_lain"
+placeholder="Masukkan Mukim"
+style="display:none; margin-top:10px;">
+</div>
+
+<div class="form-group">
+<label>Indeks Peta Topo</label>
+<input type="text"
+name="indeks"
+placeholder="Contoh: NB-47-2">
+</div>
+
+</div>
+
+<div class="divider-line"></div>
+
+<!-- SECTION 3 -->
+<div class="form-section">
+
+<h3 class="section-title">4. Maklumat Data</h3>
+
+<div class="form-grid-2">
+
+<div class="data-box">
+<h4>JENIS</h4>
+
+<label><input type="checkbox" name="jenis_data" value="Poligon"> Poligon</label>
+<label><input type="checkbox" name="jenis_data" value="Garisan"> Garisan</label>
+<label><input type="checkbox" name="jenis_data" value="Titik/Point"> Titik/Point</label>
+<label><input type="checkbox" name="jenis_data" value="Jadual"> Jadual</label>
+<label><input type="checkbox" name="jenis_data" value="Raster"> Raster</label>
+
+<div class="data-box">
+<h4>LAIN-LAIN</h4>
+<input type="text" name="jenis_lain" placeholder="Nyatakan jika lain-lain">
+</div>
+
+
+</div> 
+
+<div class="data-box">
+<h4>FORMAT</h4>
+
+<label><input type="checkbox" name="format_data" value="Gedatabase"> Gedatabase</label>
+<label><input type="checkbox" name="format_data" value="Shapefile"> Shapefile</label>
+<label><input type="checkbox" name="format_data" value="Img"> IMG</label>
+<label><input type="checkbox" name="format_data" value="Tiff"> Tiff</label>
+<label><input type="checkbox" name="format_data" value="Excel"> Excel</label>
+<label><input type="checkbox" name="format_data" value="Dbase"> Dbase</label>
+
+<div class="data-box">
+<h4>LAIN-LAIN</h4>
+<input type="text" name="format_lain" placeholder="Nyatakan jika lain-lain">
+</div>
+
+
+</div>
+
+<div class="data-box">
+<h4>UNJURAN/KOORDINAT</h4>
+
+<label><input type="checkbox" name="unjuranKoordinat_data" value="RSO"> RSO</label>
+<label><input type="checkbox" name="unjuranKoordinat_data" value="Cassini"> Cassini</label>
+<label><input type="checkbox" name="unjuranKoordinat_data" value="GDM 2000"> GDM 2000</label>
+<label><input type="checkbox" name="unjuranKoordinat_data" value="WGS 84"> WGS 84</label>
+
+<div class="data-box">
+<h4>LAIN-LAIN</h4>
+<input type="text" name="unjuranKoordinat_lain" placeholder="Nyatakan jika lain-lain">
+</div>
+
+
+</div>
+
+<div class="data-box">
+<h4>SUMBER</h4>
+
+<label><input type="checkbox" name="sumber_data" value="Data RS"> Data RS</label>
+<label><input type="checkbox" name="sumber_data" value="Peta Topo"> Peta Topo</label>
+<label><input type="checkbox" name="sumber_data" value="Kerja Lapangan"> Kerja Lapangan</label>
+<label><input type="checkbox" name="sumber_data" value="Hardcopy"> Hardcopy: Buku/Journal/Laporan/dll</label>
+
+<div class="data-box">
+<h4>LAIN-LAIN</h4>
+<input type="text" name="sumber_lain" placeholder="Nyatakan jika lain-lain">
+</div>
+
+
+</div>
+
+
+<div class="data-box">
+    <h4>AGENSI KERJASAMA / AGENSI LUAR </h4>
+    <input type="text" name="namaagensi" placeholder="Nyatakan Nama Agensi Kerjasama/Luar">
+    <input type="text" name="namaprojek" placeholder="Nyatakan Nama Projek">
+    <input type="date" name="tarikhprojek" class="date-input">
+    </div>
+</div>
+
+
+<div class="meta-container">
+
+    
+
+    <div class="meta-box">
+        <h4>Meta Data</h4>
+        <label>
+            <input type="checkbox" name="meta_data" value="Disertakan bersama data spatial.">
+            Disertakan bersama data spatial
+        </label>
+
+        <input type="text" name="meta_lain"
+        placeholder="Jika Tidak Disertakan: Sila nyatakan tahun data dan bagaimana dihasilkan/diperolehi">
+    </div>
+
+    <div class="meta-box">
+        <h4>Jenis Data</h4>
+        <label><input type="checkbox" name="jenisdataformat" value="Bercetak"> Bercetak</label>
+        <label><input type="checkbox" name="jenisdataformat" value="Digital"> Digital</label>
+    </div>
+
+    <div class="meta-box">
+        <h4>Klasifikasi Data</h4>
+        <label><input type="checkbox" name="klasifikasidata" value="Terhad"> Terhad</label>
+        <label><input type="checkbox" name="klasifikasidata" value="Tak Terhad"> Tak Terhad</label>
+    </div>
+
+</div>
+
+
+
+</div>
+
+
+
+</div>
+
+</div>
+
+</div>
+
+<div class="divider-line"></div>
+
+
+
+<div class="form-submit">
+<button type="submit" class="submit-btn">HANTAR</button>
+</div>
+
+</form>
+
+</div>
+
+<script>
+
+const negeri = document.getElementById("negeri");
+const daerah = document.getElementById("daerah");
+const mukim = document.getElementById("mukim");
+
+const daerahLain = document.getElementById("daerah_lain");
+const mukimLain = document.getElementById("mukim_lain");
+
+
+// ===============================
+// LOAD DAERAH WHEN NEGERI CHANGE
+// ===============================
+negeri.addEventListener("change", function(){
+
+    daerah.innerHTML =
+    '<option value="">-- Pilih Daerah --</option>';
+
+    mukim.innerHTML =
+    '<option value="">-- Pilih Mukim --</option>';
+
+    daerahLain.style.display = "none";
+    mukimLain.style.display = "none";
+
+    if(this.value === "") return;
+
+    fetch(`/get-daerah/?negeri=${this.value}`)
+    .then(res => res.json())
+    .then(data => {
+
+        data.forEach(item => {
+            daerah.innerHTML +=
+            `<option value="${item.nama}">
+                ${item.nama}
+            </option>`;
+        });
+
+        daerah.innerHTML +=
+        `<option value="LAIN">Lain-lain</option>`;
+    });
+
+});
+
+
+// ===============================
+// LOAD MUKIM WHEN DAERAH CHANGE
+// ===============================
+daerah.addEventListener("change", function(){
+
+    mukim.innerHTML =
+    '<option value="">-- Pilih Mukim --</option>';
+
+    mukim.style.display = "block";
+    mukimLain.style.display = "none";
+
+    // ======================
+    // IF DAERAH = LAIN-LAIN
+    // ======================
+    if(this.value === "LAIN"){
+
+        daerahLain.style.display = "block";
+
+        // hide dropdown mukim
+        mukim.style.display = "none";
+
+        // show manual mukim input
+        mukimLain.style.display = "block";
+        mukimLain.required = true;
+
+        return;
+    }
+
+    daerahLain.style.display = "none";
+
+    mukim.style.display = "block";
+    mukimLain.style.display = "none";
+    mukimLain.required = false;
+
+    if(this.value === "") return;
+
+    // ======================
+    // NORMAL LOAD MUKIM
+    // ======================
+    fetch(`/get-mukim/?daerah=${this.value}`)
+    .then(res => res.json())
+    .then(data => {
+
+        data.forEach(item => {
+            mukim.innerHTML +=
+            `<option value="${item.nama}">
+                ${item.nama}
+            </option>`;
+        });
+
+        mukim.innerHTML +=
+        `<option value="LAIN">Lain-lain</option>`;
+    });
+
+});
+
+
+// ===============================
+// MUKIM LAIN-LAIN
+// ===============================
+mukim.addEventListener("change", function(){
+
+    if(this.value === "LAIN"){
+        mukimLain.style.display = "block";
+    } else {
+        mukimLain.style.display = "none";
+    }
+
+});
+
+</script>
+
+{% endblock %}

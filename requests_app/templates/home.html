@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="welcome-left fade-in">
+
+    <div class="welcome-label">
+        Selamat Datang,
+    </div>
+
+    <div class="welcome-name">
+        {% if request.user.first_name %}
+            {{ request.user.first_name }}
+        {% else %}
+            {{ request.user.username }}
+        {% endif %}
+    </div>
+
+</div>
+
+<div class="header fade-in">
+
+<img src="{% static 'images/logomysa.png' %}" class="hero-logo fade-in fade-delay-1">
+
+<h1 class="brand-name fade-in fade-delay-2">
+SISTEM DATA GEOSPATIAL BERSEPADU
+</h1>
+
+<p class="tagline fade-in fade-delay-3">
+AGENSI ANGKASA MALAYSIA
+</p>
+
+<p class="tagline fade-in fade-delay-3">
+MYSA
+</p>
+
+</div>
+
+<div class="divider-line fade-in fade-delay-3"></div>
+
+<div class="flow-section">
+
+<h2 class="flow-title fade-in fade-delay-4">
+CARTA ALIR BAGI PROSES <br>
+SERAHAN DATA
+</h2>
+
+<div class="flow-container">
+<img src="{% static 'images/serah.png' %}" 
+class="flow-image fade-in fade-delay-4"
+onclick="openImage(this.src)">
+</div>
+
+</div>
+
+
+<div class="divider-line fade-in fade-delay-3"></div>
+
+
+<div class="flow-section">
+
+<h2 class="flow-title fade-in fade-delay-4">
+CARTA ALIR BAGI PROSES <br>
+PINJAMAN DATA
+</h2>
+
+<div class="flow-container">
+<img src="{% static 'images/pinjam.png' %}" 
+class="flow-image fade-in fade-delay-4"
+onclick="openImage(this.src)">
+</div>
+
+</div>
+
+<div id="imgModal" class="img-modal" onclick="closeImage()">
+    <span class="close-btn">&times;</span>
+    <img id="modalImg" class="modal-content">
+</div>
+
+<script>
+function openImage(src){
+    document.getElementById("imgModal").style.display = "flex";
+    document.getElementById("modalImg").src = src;
+}
+
+function closeImage(){
+    document.getElementById("imgModal").style.display = "none";
+}
+</script>
+
+{% endblock %}

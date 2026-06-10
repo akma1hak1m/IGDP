@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="glass-card form-card fade-in">
+
+<h2 class="flow-title">Papan Kelulusan</h2>
+
+<div class="divider-line"></div>
+
+{% for req in requests %}
+<div class="approval-card">
+
+    <!-- TOP -->
+    <div class="approval-header">
+        <span class="badge-type">
+            {{ req.borang_type }}
+        </span>
+        <span class="request-id">#{{ req.id }}</span>
+    </div>
+
+    <!-- INFO -->
+    <div class="approval-body">
+
+        <div class="info">
+            <p><b>Nama:</b> {{ req.namapemohon }}</p>
+            <p><b>Email:</b> {{ req.email }}</p>
+            <p><b>Negeri:</b> {{ req.negeri }}</p>
+        </div>
+
+        <div class="status-box">
+            <p>Status</p>
+            <span class="status-badge">
+                {{ req.status }}
+            </span>
+        </div>
+
+    </div>
+
+    <!-- ACTION -->
+    <div class="approval-actions">
+
+        <a href="{% url 'approve_request' req.id %}" class="btn-approve">
+            ✔ Luluskan
+        </a>
+
+      {% for group in request.user.groups.all %}
+    {% if group.name == "Pengarah BITG" and req.status == "Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik" %}
+
+        <a href="{% url 'assign_pic' req.id %}" class="btn-assign">
+            Penugasan PIC
+        </a>
+
+    {% endif %}
+{% endfor %}
+
+    </div>
+
+</div>
+{% empty %}
+<p style="text-align:center;">Tiada Permohonan Menunggu Kelulusan</p>
+{% endfor %}
+
+</div>
+
+{% endblock %}

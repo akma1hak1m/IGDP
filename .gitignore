@@ -1,0 +1,51 @@
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Django migrations - keep migrations in repo
+# (intentionally left blank)
+
+# Environment / secrets
+*.env
+.env
+.env.*
+
+# Virtual environments
+venv/
+.venv/
+
+# Python cache / build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled extensions
+*.so
+*.pyd
+*.dll
+
+# Type checking / tooling
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IPython/Jupyter
+.ipynb_checkpoints/
+
+# Geo/DB large generated files (optional safety)
+*.gdb
+*.gpkg
+*.shp.xml
+

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="glass-card status-card">
+
+<h2 class="flow-title">STATUS PERMOHONAN DATA</h2>
+
+{% for r in requests %}
+
+<div class="accordion-box">
+
+    <!-- HEADER -->
+    <div class="accordion-header" onclick="toggleBox('{{ r.id }}')">
+
+        <div class="left-head">
+            {% if r.borang_type == "SERAHAN" %}
+                <span class="badge-serahan">BORANG SERAHAN</span>
+            {% else %}
+                <span class="badge-pinjaman">BORANG PINJAMAN</span>
+            {% endif %}
+
+            <span class="borang-id">#{{ r.id }}</span>
+        </div>
+
+        <span class="arrow" id="arrow{{ r.id }}">▼</span>
+
+    </div>
+
+    <!-- CONTENT -->
+    <div class="accordion-content" id="box{{ r.id }}">
+
+        <div class="request-box-clean">
+
+            <!-- LEFT SIDE -->
+            <div class="request-left">
+
+                <div class="details-box">
+
+                    <p><b>Nama Pemohon:</b></p>
+                    <p>{{ r.namapemohon }}</p>
+
+                    <p><b>Email:</b></p>
+                    <p>{{ r.email }}</p>
+
+                    <p><b>No. Telefon:</b></p>
+                    <p>{{ r.telefon }}</p>
+
+                    <p><b>Komponen Data:</b></p>
+                    <p>{{ r.komponen_data }}</p>
+
+                    <p><b>Negeri:</b></p>
+                    <p>{{ r.negeri }}</p>
+
+                    <p><b>Daerah:</b></p>
+                    <p>{{ r.daerah }}</p>
+
+                    <p><b>Mukim:</b></p>
+                    <p>{{ r.mukim }}</p>
+
+                    <p><b>Indeks Peta Topo:</b></p>
+                    <p>{{ r.indeks }}</p>
+
+                    {% if r.borang_type == "SERAHAN" %}
+
+                    <p><b>Jenis:</b></p>
+                    <p>{{ r.jenis_data }}</p>
+
+                    <p><b>Format:</b></p>
+                    <p>{{ r.format_data }}</p>
+
+                    <p><b>Unjuran/Koordinat:</b></p>
+                    <p>{{ r.unjuranKoordinat_data }}</p>
+
+                    <p><b>Sumber:</b></p>
+                    <p>{{ r.sumber_data }}</p>
+
+                    <p><b>Meta Data:</b></p>
+                    <p>{{ r.meta_data }}</p>
+
+                    <p><b>Jenis Data:</b></p>
+                    <p>{{ r.jenisdataformat }}</p>
+
+                    <p><b>Klasifikasi Data:</b></p>
+                    <p>{{ r.klasifikasidata }}</p>
+
+                    {% if r.namaagensikerjasama or r.namaprojek or r.tarikhprojek %}
+                    <p><b>Agensi Kerjasama:</b></p>
+                    <p>{{ r.namaagensikerjasama }}</p>
+
+                    <p><b>Nama Projek:</b></p>
+                    <p>{{ r.namaprojek }}</p>
+
+                    <p><b>Tarikh Projek:</b></p>
+                    <p>{{ r.tarikhprojek }}</p>
+                    {% endif %}
+
+                    {% if r.namaagensiluar or r.namaprojekluar or r.tarikhprojekluar %}
+                    <p><b>Agensi Luar:</b></p>
+                    <p>{{ r.namaagensiluar }}</p>
+
+                    <p><b>Nama Projek (Luar):</b></p>
+                    <p>{{ r.namaprojekluar }}</p>
+
+                    <p><b>Tarikh Projek (Luar):</b></p>
+                    <p>{{ r.tarikhprojekluar }}</p>
+                    {% endif %}
+
+                    {% elif r.borang_type == "PINJAMAN" %}
+
+                    <p><b>Tujuan Pinjaman:</b></p>
+                    <p>{{ r.tujuan }}</p>
+
+                    <p><b>Catatan:</b></p>
+                    <p>{{ r.cacatan }}</p>
+
+                    <p><b>Nama:</b></p>
+                    <p>{{ r.nama }}</p>
+
+                    <p><b>Tarikh:</b></p>
+                    <p>{{ r.Tarikh }}</p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT SIDE TRACKING -->
+            <div class="tracking-container">
+
+                <div class="tracking-step {% if r.status == 'Borang Telah Dihantar' or r.status == 'Pengarah Bahagian Telah Sahkan' or r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Borang Telah Dihantar</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Pengarah Bahagian Telah Sahkan' or r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Pengarah Bahagian Telah Sahkan</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Kelulusan Pengarah BITG</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Penugasan PIC</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Data Telah Di-email</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Pemohon Sahkan Data</div>
+                </div>
+
+                <div class="tracking-step {% if r.status == 'Selesai' %}completed{% endif %}">
+                    <div class="circle"></div>
+                    <div class="label">Selesai</div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% empty %}
+
+<p style="text-align:center;margin-top:40px;">
+Tiada permohonan dihantar.
+</p>
+
+{% endfor %}
+
+</div>
+
+<script>
+function toggleBox(id){
+
+    let box = document.getElementById("box" + id);
+    let arrow = document.getElementById("arrow" + id);
+
+    box.classList.toggle("active");
+
+    if(box.classList.contains("active")){
+        arrow.style.transform = "rotate(180deg)";
+    }else{
+        arrow.style.transform = "rotate(0deg)";
+    }
+}
+</script>
+
+{% endblock %}

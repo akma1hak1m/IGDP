@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="glass-card main-panel">
+
+    <h2 class="page-title">KEMAS KINI STATUS ALIRAN KERJA</h2>
+
+    <!-- IMPORTANT WRAPPER -->
+    <div class="workflow-container">
+
+        <!-- LEFT SIDE -->
+        <div class="request-list">
+
+            <h3 class="section-title">Semua Permohonan</h3>
+
+            {% for r in all_requests %}
+                <div class="request-card-small">
+
+                    <div>
+                        <div class="req-title">Borang #{{ r.id }}</div>
+                        <div class="req-status">{{ r.status }}</div>
+                    </div>
+
+                    <a href="{% url 'status_update' r.id %}" class="btn-select">
+                        Select
+                    </a>
+
+                </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="update-panel">
+
+            {% if data %}
+
+                <div class="update-card">
+
+                    <h3>Kemaskini Borang #{{ data.id }}</h3>
+
+                    <p class="current-status">
+                        Status Terkini: <span>{{ data.status }}</span>
+                    </p>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="request_id" value="{{ data.id }}">
+
+                        <select name="status" class="modern-select">
+                            <option value="Borang Telah Dihantar">Borang Telah Dihantar</option>
+                            <option value="Pengarah Bahagian Telah Sahkan">Pengarah Bahagian Telah Sahkan</option>
+                            <option value="Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik">Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik</option>
+                            <option value="Penugasan PIC">Penugasan PIC</option>
+                            <option value="Data Telah Di-email">Data Telah Di-email</option>
+                            <option value="Pemohon Telah Mengesahkan Data">Pemohon Telah Mengesahkan Data</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+
+                        <button type="submit" class="submit-btn">
+                            Kemaskini
+                        </button>
+
+                    </form>
+
+                </div>
+
+            {% else %}
+
+                <div class="update-card empty">
+                    Pilih Permohonan di Sebelah Kiri
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

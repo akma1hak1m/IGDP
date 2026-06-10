@@ -1,0 +1,122 @@
+from django.db import models
+from django.contrib.auth.models import User
+
+
+class DataRequest(models.Model):
+
+    BORANG_TYPE = [
+        ('SERAHAN', 'Borang Serahan Data'),
+        ('PINJAMAN', 'Borang Pinjaman Data'),
+    ]
+
+    STATUS_CHOICES = [
+    ("Borang Telah Dihantar", "Borang Telah Dihantar"),
+    ("Pengarah Bahagian Telah Sahkan", "Pengarah Bahagian Telah Sahkan"),
+    ("Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik", "Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik"),
+    ("Penugasan PIC", "Penugasan PIC"),
+    ("Data Telah Di-email", "Data Telah Di-email"),
+    ("Pemohon Telah Mengesahkan Data", "Pemohon Telah Mengesahkan Data"),
+    ("Selesai", "Selesai"),
+    ]
+
+    borang_type = models.CharField(max_length=20, choices=BORANG_TYPE)
+
+    pemohon = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    namapemohon = models.CharField(max_length=100, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    telefon = models.CharField(max_length=100, blank=True, null=True)
+
+    komponen_data = models.TextField(blank=True, null=True)
+    komponen_lain = models.CharField(max_length=200, blank=True, null=True)
+
+    negeri = models.CharField(max_length=100)
+    daerah = models.CharField(max_length=100, blank=True, null=True)
+    mukim = models.CharField(max_length=100, blank=True, null=True)
+    indeks = models.CharField(max_length=100, blank=True, null=True)
+
+    jenis_data = models.CharField(max_length=255,blank=True, null=True)
+    jenis_lain = models.CharField(max_length=200, blank=True, null=True)
+
+    format_data = models.CharField(max_length=255,blank=True, null=True)
+    format_lain = models.CharField(max_length=200, blank=True, null=True)
+
+    unjuranKoordinat_data = models.CharField(max_length=255,blank=True, null=True)
+    unjuranKoordinat_lain = models.CharField(max_length=200, blank=True, null=True)
+
+    sumber_data = models.CharField(max_length=255,blank=True, null=True)
+    sumber_lain = models.CharField(max_length=200, blank=True, null=True)
+
+    meta_data = models.TextField(blank=True, null=True)
+
+
+    nama_projek = models.TextField(max_length=100, blank=True, null=True)
+
+
+    tujuan = models.TextField(max_length=200, blank=True, null=True)
+    cacatan = models.TextField(max_length=200, blank=True, null=True)
+
+    Setuju = models.BooleanField(default=False)
+    nama = models.CharField(max_length=200, blank=True, null=True)
+    Tarikh = models.CharField(max_length=50, blank=True, null=True)
+
+    namaagensikerjasama = models.CharField(max_length=100, blank=True, null=True)
+    namaprojek = models.CharField(max_length=100, blank=True, null=True)
+    tarikhprojek = models.CharField(max_length=100, blank=True, null=True)
+
+    namaagensiluar = models.CharField(max_length=100, blank=True, null=True)
+    namaprojekluar = models.CharField(max_length=100, blank=True, null=True)
+    tarikhprojekluar = models.CharField(max_length=100, blank=True, null=True)
+
+    jenisdataformat = models.CharField(max_length=255,blank=True, null=True)
+    
+    klasifikasidata = models.CharField(max_length=255,blank=True, null=True)
+
+
+    status = models.CharField(
+        max_length=1000,
+        choices=STATUS_CHOICES,
+        default='Borang Telah Dihantar'
+    )
+
+    uploaded_file = models.FileField(
+        upload_to="uploaded_data/",
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+def __str__(self):
+    return f"Request {self.id} - {self.borang_type}"
+
+
+class LoginLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    login_time = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.login_time}"
+    
+
+class Negeri(models.Model):
+    nama = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.nama
+
+
+class Daerah(models.Model):
+    negeri = models.ForeignKey(Negeri, on_delete=models.CASCADE)
+    nama = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.nama
+
+
+class Mukim(models.Model):
+    daerah = models.ForeignKey(Daerah, on_delete=models.CASCADE)
+    nama = models.CharField(max_length=150)
+
+    def __str__(self):
+        return self.nama

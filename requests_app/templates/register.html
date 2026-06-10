@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    {% if messages %}
+    {% for message in messages %}
+        <div class="alert-msg">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<head>
+<meta charset="UTF-8">
+<title>Daftar Akaun</title>
+<link rel="stylesheet" href="{% static 'css/templatemo-nexaverse.css' %}">
+</head>
+
+<body>
+
+<div class="ambient-bg">
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+</div>
+
+<div class="grid-overlay"></div>
+
+<div class="header">
+<img src="{% static 'images/logomysa.png' %}" class="hero-logo">
+
+<h1 class="brand-name">AGENSI ANGKASA MALAYSIA</h1>
+<h1 class="brand-name">(MYSA)</h1>
+
+<p class="tagline">DATA GEOSPATIAL BERSEPADU</p>
+</div>
+
+<div class="glass-card login-card">
+
+<h2 class="auth-title">DAFTAR AKAUN</h2>
+
+<form method="POST">
+{% csrf_token %}
+
+<div class="form-group"><input type="text" name="fullname" placeholder="Nama Penuh" required></div>
+<div class="form-group"><input type="text" name="username" placeholder="Username" required></div>
+<div class="form-group"><input type="email" name="email" placeholder="Email" required></div>
+<div class="form-group"><input type="password" name="password" placeholder="Kata Laluan" required></div>
+<div class="form-group"><input type="password" name="confirm" placeholder="Sahkan Kata Laluan" required></div>
+
+<button type="submit" class="submit-btn login-btn">
+Daftar Sekarang
+</button>
+
+<div class="bottom-link">
+    <a href="{% url 'login' %}" class="clean-link">
+        ← Kembali ke Login
+    </a>
+</div>
+
+</form>
+
+</div>
+
+</body>
+</html>

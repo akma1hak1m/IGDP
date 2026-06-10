@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="flow-title">Semakan Borang</h2>
+
+<form method="GET" class="search-bar-wrap">
+    <input 
+        type="text" 
+        name="q"
+        value="{{ keyword }}"
+        placeholder="Cari ID / Nama / Email / Status / Negeri..."
+        class="search-input"
+    >
+
+    <button type="submit" class="submit-btn">
+        Cari
+    </button>
+
+    <a href="{% url 'admin_borang' %}" class="submit-btn clear-btn">
+        Reset
+    </a>
+</form>
+
+{% for r in requests %}
+
+<div class="request-card">
+
+    <div class="request-left">
+
+        <h3 class="borang-title">
+            {{ r.borang_type }} #{{ r.id }}
+        </h3>
+
+        <div class="data-grid">
+
+            <p><b>Nama Pemohon:</b></p>
+            <p>{{ r.namapemohon }}</p>
+
+            <p><b>Email:</b></p>
+            <p>{{ r.email }}</p>
+
+            <p><b>No. Telefon:</b></p>
+            <p>{{ r.telefon }}</p>
+
+            <p><b>Komponen Data</b></p>
+            <p>{{ r.komponen_data }}</p>
+
+            <p><b>Negeri</b></p>
+            <p>{{ r.negeri }}</p>
+
+            <p><b>Daerah</b></p>
+            <p>{{ r.daerah }}</p>
+
+            <p><b>Mukim</b></p>
+            <p>{{ r.mukim }}</p>
+
+            <p><b>Indeks Peta Topo</b></p>
+            <p>{{ r.indeks }}</p>
+
+            {% if r.borang_type == "SERAHAN" %}
+
+            <p><b>Jenis</b></p>
+            <p>{{ r.jenis_data }}</p>
+
+            <p><b>Format</b></p>
+            <p>{{ r.format_data }}</p>
+
+            <p><b>Unjuran</b></p>
+            <p>{{ r.unjuranKoordinat_data }}</p>
+
+            <p><b>Sumber</b></p>
+            <p>{{ r.sumber_data }}</p>
+
+            <p><b>Meta Data</b></p>
+            <p>{{ r.meta_data }}</p>
+
+            <p><b>Jenis Data</b></p>
+            <p>{{ r.jenisdataformat }}</p>
+            
+            <p><b>Klasifikasi Data</b></p>
+            <p>{{ r.klasifikasidata }}</p>
+
+            {% if r.namaagensikerjasama or r.namaprojek or r.tarikhprojek %}
+            <p><b>Agensi Kerjasama</b></p>
+            <p>{{ r.namaagensikerjasama }}</p>
+
+            <p><b>Nama Projek</b></p>
+            <p>{{ r.namaprojek }}</p>
+
+            <p><b>Tarikh Projek</b></p>
+            <p>{{ r.tarikhprojek }}</p>
+            {% endif %}
+
+            {% if r.namaagensiluar or r.namaprojekluar or r.tarikhprojekluar %}
+            <p><b>Agensi Luar</b></p>
+            <p>{{ r.namaagensiluar }}</p>
+
+            <p><b>Nama Projek (Luar)</b></p>
+            <p>{{ r.namaprojekluar }}</p>
+
+            <p><b>Tarikh Projek (Luar)</b></p>
+            <p>{{ r.tarikhprojekluar }}</p>
+            {% endif %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+
+    <div class="request-right">
+
+        <div class="status-box">
+
+            <p class="status-title">Status</p>
+
+            <p class="status-value">
+                {{ r.get_status_display }}
+            </p>
+
+        </div>
+
+    
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "Admin" or group.name == "PIC" %}
+        <a href="{% url 'status_update' r.id %}" class="submit-btn">
+            Kemaskini Status
+        </a>
+    {% endif %}
+{% endfor %}
+
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+{% endblock %}
