@@ -546,8 +546,8 @@ def verify_data(request, borang_type, request_id):
         if action == "reject":
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
-            log_status(data, "Penyediaan Data", user, sebab_tolak=sebab or "-")
             log_status(data, "Pembetulan Oleh Pemohon", user, sebab_tolak=sebab or "-")
+            log_status(data, "Penyediaan Data", user)
             send_notif("Pembetulan Diperlukan", f"Pemohon memerlukan pembetulan untuk permohonan ID {data.id}.\nSebab: {sebab}", [data.pic.email] if data.pic else [])
         else:
             log_status(data, "Sahkan Penerimaan Data", user)
@@ -571,17 +571,25 @@ def upload_data(request, borang_type, request_id):
 
     user = request.user
     if request.method == "POST":
+        if not is_pic(user) or data.pic_id != user.id:
+            return HttpResponseForbidden("Not assigned")
+
         uploaded_file = request.FILES.get("data_file") or request.FILES.get("file")
         if not uploaded_file:
             return redirect("upload_page")
-        data.uploaded_file = uploaded_file
-        data.save()
 
-        if data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status in ["Penyediaan Data", "Pembetulan Oleh Pemohon"]:
+        if data.borang_type == "PINJAMAN":
+            if data.status not in ["Penyediaan Data", "Pembetulan Oleh Pemohon"]:
+                return HttpResponseForbidden("Invalid stage")
+            data.uploaded_file = uploaded_file
+            data.save()
             log_status(data, "Serahan Data", user)
             send_notif("Data Sedia Untuk Semakan", f"Data permohonan ID {data.id} telah disediakan. Sila semak.", [data.email])
-        elif data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status in ["Verifikasi Data Oleh PIC", "Pembetulan Data"]:
-            log_status(data, "Pembetulan Data" if data.status == "Pembetulan Data" else "Verifikasi Data Oleh PIC", user)
+        else:
+            if data.status not in ["Verifikasi Data Oleh PIC", "Pembetulan Data"]:
+                return HttpResponseForbidden("Invalid stage")
+            data.uploaded_file = uploaded_file
+            data.save()
 
         return redirect("upload_page")
 
