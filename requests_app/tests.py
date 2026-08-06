@@ -208,6 +208,24 @@ class FlowTestBase(TestCase):
         s.refresh_from_db()
         self.assertEqual(s.status, "Verifikasi Data Oleh PIC")
 
+    def test_serah_bitg_reject_uses_correct_status(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="reject", sebab_tolak="Data tidak lengkap")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Tidak Mendapat Kelulusan Pengarah BITG")
+        log = StatusLog.objects.filter(
+            object_id=s.id, borang_type="SERAHAN"
+        ).order_by("id").last()
+        self.assertEqual(log.sebab_tolak, "Data tidak lengkap")
+
+    def test_pinjam_bitg_reject_uses_correct_status(self):
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="approve")
+        self.approve(p, self.bitg, action="reject", sebab_tolak="Permintaan tidak lengkap")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Tidak Mendapat Kelulusan Pengarah BITG")
+
     # ---------- pinjam happy path ----------
 
     def test_pinjam_happy_path(self):

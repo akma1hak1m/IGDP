@@ -141,9 +141,9 @@
                 </div>
                 {% endif %}
 
-                {% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" %}
+                {% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" or r.status == "Tidak Mendapat Kelulusan Pengarah BITG" %}
                 <div class="reject-alert">
-                    <p><b>Permohonan Tidak Disokong.</b></p>
+                    <p><b>Permohonan Tidak Disokong / Tidak Diluluskan.</b></p>
                     {% if r.status_logs %}
                     <p>Sebab: {{ r.status_logs.0.sebab_tolak|default:"-" }}</p>
                     {% endif %}

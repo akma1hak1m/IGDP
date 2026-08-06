@@ -29,6 +29,7 @@ SERAHAN_STEPS = [
     "Borang Telah Dihantar",
     "Tidak Disokong Oleh Pengarah Bahagian",
     "Disokong Oleh Pengarah Bahagian",
+    "Tidak Mendapat Kelulusan Pengarah BITG",
     "Mendapat Kelulusan Pengarah BITG",
     "Semakan Dan Penugasan Oleh Pengurus Pengkalan Data",
     "Verifikasi Data Oleh PIC",
@@ -42,6 +43,7 @@ PINJAMAN_STEPS = [
     "Borang Telah Dihantar",
     "Tidak Disokong Oleh Pengarah Bahagian",
     "Disokong Oleh Pengarah Bahagian",
+    "Tidak Mendapat Kelulusan Pengarah BITG",
     "Mendapat Kelulusan Pengarah BITG",
     "Penugasan PIC Oleh Pengarah BITG",
     "Penyediaan Data",
@@ -458,8 +460,8 @@ def approve_request(request, borang_type, request_id):
     # Pengarah BITG
     elif is_pengarah_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
         if action == "reject":
-            log_status(data, "Tidak Disokong Oleh Pengarah Bahagian", user, ulasan=ulasan, sebab_tolak=sebab or "-")
-            send_notif("Permohonan Tidak Disokong", f"Permohonan ID {data.id} tidak disokong.\nSebab: {sebab}", [data.email])
+            log_status(data, "Tidak Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan, sebab_tolak=sebab or "-")
+            send_notif("Permohonan Tidak Diluluskan (BITG)", f"Permohonan ID {data.id} tidak diluluskan oleh Pengarah BITG.\nSebab: {sebab}", [data.email])
         else:
             log_status(data, "Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan)
             send_notif("Permohonan Diluluskan (BITG)", f"Permohonan ID {data.id} telah diluluskan oleh Pengarah BITG.\nUlasan: {ulasan or '-'}", [data.email])
