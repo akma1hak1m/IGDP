@@ -7,6 +7,7 @@ from .models import (
     SerahanRequest,
     PinjamanRequest,
     StatusLog,
+    UserProfile,
 )
 
 admin.site.register(DataRequest)
@@ -14,6 +15,7 @@ admin.site.register(DataRequest)
 admin.site.register(SerahanRequest)
 admin.site.register(PinjamanRequest)
 admin.site.register(StatusLog)
+admin.site.register(UserProfile)
 
 admin.site.register(Negeri)
 admin.site.register(Daerah)

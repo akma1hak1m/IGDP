@@ -22,6 +22,7 @@ from .models import (
     SerahanRequest,
     PinjamanRequest,
     StatusLog,
+    UserProfile,
 )
 
 SERAHAN_STEPS = [
@@ -162,6 +163,17 @@ def group_emails(group_name):
     return [u.email for u in users if u.email]
 
 
+def applicant_info(user):
+    """Applicant details always come from the logged-in account."""
+    name = (user.get_full_name() or "").strip() or user.username
+    email = user.email or ""
+    phone = ""
+    profile = getattr(user, "profile", None)
+    if profile and profile.phone:
+        phone = profile.phone
+    return name, email, phone
+
+
 # =============================
 # AUTH
 # =============================
@@ -227,9 +239,9 @@ def borang_serahan(request):
 
         obj = SerahanRequest.objects.create(
             pemohon=request.user,
-            namapemohon=request.POST.get("namapemohon"),
-            email=request.POST.get("email"),
-            telefon=request.POST.get("telefon"),
+            namapemohon=applicant_info(request.user)[0],
+            email=applicant_info(request.user)[1],
+            telefon=applicant_info(request.user)[2],
             komponen_data=", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
             negeri=Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
             daerah=Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
@@ -262,7 +274,14 @@ def borang_serahan(request):
         )
         return redirect("status")
 
-    return render(request, "borang_serahan.html", {"negeri_list": Negeri.objects.all()})
+    applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
+
+    return render(request, "borang_serahan.html", {
+        "negeri_list": Negeri.objects.all(),
+        "applicant_name": applicant_name,
+        "applicant_email": applicant_email,
+        "applicant_phone": applicant_phone,
+    })
 
 
 # =============================
@@ -289,9 +308,9 @@ def borang_pinjaman(request):
 
         obj = PinjamanRequest.objects.create(
             pemohon=request.user,
-            namapemohon=request.POST.get("namapemohon"),
-            email=request.POST.get("email"),
-            telefon=request.POST.get("telefon"),
+            namapemohon=applicant_info(request.user)[0],
+            email=applicant_info(request.user)[1],
+            telefon=applicant_info(request.user)[2],
             komponen_data=", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
             negeri=Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
             daerah=Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
@@ -319,7 +338,14 @@ def borang_pinjaman(request):
         )
         return redirect("status")
 
-    return render(request, "borang_pinjaman.html", {"negeri_list": Negeri.objects.all()})
+    applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
+
+    return render(request, "borang_pinjaman.html", {
+        "negeri_list": Negeri.objects.all(),
+        "applicant_name": applicant_name,
+        "applicant_email": applicant_email,
+        "applicant_phone": applicant_phone,
+    })
 
 
 # =============================
@@ -792,6 +818,10 @@ def register_page(request):
             return redirect("register")
 
         user = User.objects.create_user(username=username, email=email, password=password, first_name=fullname)
+        UserProfile.objects.update_or_create(
+            user=user,
+            defaults={"phone": request.POST.get("telefon", "").strip()},
+        )
         staff_group, created = Group.objects.get_or_create(name="Staff")
         user.groups.add(staff_group)
         login(request, user)

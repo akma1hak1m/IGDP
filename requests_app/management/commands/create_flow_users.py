@@ -1,6 +1,7 @@
 import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User, Group
+from requests_app.models import UserProfile
 
 ROLES = {
     "pemohon": ["Staff"],
@@ -36,6 +37,7 @@ class Command(BaseCommand):
             )
             user.set_password(password)
             user.save()
+            UserProfile.objects.get_or_create(user=user)
             for group_name in groups:
                 group, _ = Group.objects.get_or_create(name=group_name)
                 user.groups.add(group)

@@ -351,3 +351,32 @@ class FlowTestBase(TestCase):
         subjects = [m.subject for m in mail.outbox]
         self.assertIn("Permohonan Serahan Diterima", subjects)
         self.assertIn("Permohonan Baru Memerlukan Kelulusan", subjects)
+
+    # ---------- applicant auto-fill ----------
+
+    def test_pemohon_details_auto_filled_from_logged_in_user(self):
+        _, s = self.submit_serah(namapemohon="HACKED", email="hack@x.com")
+        self.assertEqual(s.namapemohon, self.pemohon.username)
+        self.assertEqual(s.email, self.pemohon.email)
+
+        _, p = self.submit_pinjam(namapemohon="HACKED", email="hack@x.com")
+        self.assertEqual(p.namapemohon, self.pemohon.username)
+        self.assertEqual(p.email, self.pemohon.email)
+
+    def test_register_stores_phone_in_profile(self):
+        c = Client()
+        resp = c.post(
+            reverse("register"),
+            {
+                "fullname": "Test User",
+                "username": "newuser",
+                "email": "new@x.com",
+                "password": "password123",
+                "confirm": "password123",
+                "telefon": "0199999999",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(username="newuser")
+        self.assertEqual(user.first_name, "Test User")
+        self.assertEqual(user.profile.phone, "0199999999")
