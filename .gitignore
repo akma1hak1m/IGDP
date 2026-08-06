@@ -17,6 +17,7 @@ staticfiles/
 # Virtual environments
 venv/
 .venv/
+IGDP/
 
 # Python cache / build artifacts
 __pycache__/

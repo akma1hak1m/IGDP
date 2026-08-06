@@ -153,8 +153,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'igdp@mysa.gov.my'
-EMAIL_HOST_PASSWORD = 'ivaj xejl ozit klsh'  # app password
+EMAIL_HOST_USER = 'flaskapp123912@gmail.com'
+EMAIL_HOST_PASSWORD = 'pfxcdjmppoxwfxeb'  # app password
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
@@ -173,12 +173,15 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # 2. Allow your domain for CSRF protection
 CSRF_TRUSTED_ORIGINS = [
     'https://igdp.mysa.gov.my',
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
 ]
 
 # 3. Optional but RECOMMENDED for HTTPS-only sites
 # These ensure cookies are only sent over HTTPS
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+# Disabled when DEBUG so cookies work on plain HTTP localhost
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 
 # 4. Make sure your domain is in ALLOWED_HOSTS
 ALLOWED_HOSTS = [

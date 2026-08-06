@@ -1,6 +1,6 @@
 @echo off
-cd /d C:\IGDP
+cd /d D:\IGDP
 
-venv\Scripts\python.exe manage.py runserver 0.0.0.0:8001
+IGDP\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 
 pause
