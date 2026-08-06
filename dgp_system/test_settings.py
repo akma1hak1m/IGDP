@@ -19,6 +19,8 @@ ALLOWED_HOSTS = ["testserver", "127.0.0.1", "localhost"]
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
 MEDIA_ROOT = str(_TEST_DIR / "media")
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

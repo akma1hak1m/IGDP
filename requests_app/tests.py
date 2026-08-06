@@ -370,6 +370,21 @@ class FlowTestBase(TestCase):
         self.assertIn("Permohonan Serahan Diterima", subjects)
         self.assertIn("Permohonan Baru Memerlukan Kelulusan", subjects)
 
+    def test_timeline_renders_on_status_and_admin_pages(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve", ulasan="OK")
+
+        resp = self.c(self.pemohon).get(reverse("status"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "status-timeline")
+        self.assertContains(resp, "Disokong Oleh Pengarah Bahagian")
+
+        resp = self.c(self.pengurus).get(reverse("admin_borang"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "status-timeline")
+        self.assertContains(resp, "Ulasan: OK")
+
     # ---------- applicant auto-fill ----------
 
     def test_pemohon_details_auto_filled_from_logged_in_user(self):

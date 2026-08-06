@@ -137,7 +137,7 @@ def annotate_steps(obj):
     obj.status_logs = StatusLog.objects.filter(
         content_type=request_content_type(obj),
         object_id=obj.id,
-    ).select_related("changed_by").order_by("-changed_at")[:5]
+    ).select_related("changed_by").order_by("-changed_at")
     return obj
 
 

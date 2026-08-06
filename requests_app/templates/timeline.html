@@ -1,0 +1,32 @@
+{% comment %}
+Reusable status history timeline widget (Shopee-delivery style).
+
+Usage:
+  {% include "timeline.html" with logs=r.status_logs %}
+  {% include "timeline.html" with logs=r.status_logs current=r.status %}
+
+`logs`  : iterable of StatusLog, newest-first.
+`current`: optional; the latest status string, shown as an active step.
+{% endcomment %}
+
+{% if logs %}
+<div class="status-timeline{% if logs|length > 6 %} scrollable{% endif %}">
+
+    {% for log in logs %}
+    <div class="tl-item {% if forloop.first %}current{% endif %}">
+        <div class="tl-marker"></div>
+        <div class="tl-content">
+            <div class="tl-status">{{ log.status }}</div>
+            <div class="tl-meta">{{ log.changed_at|date:"d/m/Y H:i" }} &middot; {{ log.changed_by.username }}</div>
+            {% if log.ulasan %}
+            <div class="tl-note">Ulasan: {{ log.ulasan }}</div>
+            {% endif %}
+            {% if log.sebab_tolak %}
+            <div class="tl-note reject">Sebab: {{ log.sebab_tolak }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endif %}

@@ -130,14 +130,7 @@
                 {% if r.status_logs %}
                 <div class="details-box">
                     <p><b>Sejarah Status:</b></p>
-                    {% for log in r.status_logs %}
-                    <p class="log-line">
-                        [{{ log.changed_at|date:"d/m/Y H:i" }}] {{ log.changed_by.username }} →
-                        {{ log.status }}
-                        {% if log.ulasan %}<br><i>Ulasan: {{ log.ulasan }}</i>{% endif %}
-                        {% if log.sebab_tolak %}<br><i>Sebab: {{ log.sebab_tolak }}</i>{% endif %}
-                    </p>
-                    {% endfor %}
+                    {% include "timeline.html" with logs=r.status_logs %}
                 </div>
                 {% endif %}
 
