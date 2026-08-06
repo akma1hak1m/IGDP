@@ -15,7 +15,6 @@ from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 from .models import (
-    DataRequest,
     LoginLog,
     Negeri,
     Daerah,
@@ -687,6 +686,7 @@ def statistics(request):
     kawasan_counter = Counter()
     jenis_counter = Counter()
     klas_counter = Counter()
+    meta_counter = Counter()
 
     def bump(counter, val):
         if val:
@@ -697,6 +697,7 @@ def statistics(request):
         kawasan_counter[str(r.negeri) + "|" + str(r.daerah) + "|" + str(r.mukim)] += 1
         bump(jenis_counter, getattr(r, "jenis_data", None))
         bump(klas_counter, getattr(r, "klasifikasidata", None))
+        bump(meta_counter, getattr(r, "meta_data", None))
 
     def kawasan_list(counter, n=5):
         out = []
@@ -723,7 +724,7 @@ def statistics(request):
         "total_pinjaman": total_pinjaman,
         "top_kawasan": kawasan_list(kawasan_counter),
         "top_komponen": field_list(komponen_counter, "komponen_data"),
-        "top_metadata": [],
+        "top_metadata": field_list(meta_counter, "meta_data"),
         "top_jenis": field_list(jenis_counter, "jenis_data"),
         "top_klasifikasi": field_list(klas_counter, "klasifikasidata"),
     }

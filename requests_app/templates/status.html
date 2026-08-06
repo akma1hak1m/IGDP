@@ -141,6 +141,19 @@
                 </div>
                 {% endif %}
 
+                {% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" %}
+                <div class="reject-alert">
+                    <p><b>Permohonan Tidak Disokong.</b></p>
+                    {% if r.status_logs %}
+                    <p>Sebab: {{ r.status_logs.0.sebab_tolak|default:"-" }}</p>
+                    {% endif %}
+                    <p>
+                        Sila kemaskini dan hantar semula.
+                        <a href="{% if r.borang_type == 'SERAHAN' %}{% url 'borang_serahan' %}{% else %}{% url 'borang_pinjaman' %}{% endif %}" class="btn-approve">Borang Baru</a>
+                    </p>
+                </div>
+                {% endif %}
+
             </div>
 
             <!-- RIGHT SIDE TRACKING -->
