@@ -15,7 +15,8 @@
         <span class="badge-type">
             {{ req.borang_type }}
         </span>
-        <span class="request-id">#{{ req.id }}</span>
+            <span class="request-id">#{{ req.id }}</span>
+            {% if req.overdue %}<span class="badge-overdue">TERLEWAT</span>{% endif %}
     </div>
 
     <!-- INFO -->

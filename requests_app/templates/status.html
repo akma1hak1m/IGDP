@@ -21,6 +21,7 @@
 
             <span class="borang-id">#{{ r.id }}</span>
             <span class="status-value">{{ r.status }}</span>
+            {% if r.overdue %}<span class="badge-overdue">TERLEWAT</span>{% endif %}
         </div>
 
         <span class="arrow" id="arrow{{ r.id }}">▼</span>

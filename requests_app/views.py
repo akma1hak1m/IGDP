@@ -126,6 +126,12 @@ def annotate_steps(obj):
     idx = steps.index(obj.status) if obj.status in steps else 0
     obj.steps = steps
     obj.step_idx = idx
+    obj.overdue = bool(
+        obj.borang_type == "PINJAMAN"
+        and obj.deadline
+        and obj.status in ["Penyediaan Data", "Pembetulan Oleh Pemohon"]
+        and timezone.now() > obj.deadline
+    )
     obj.status_logs = StatusLog.objects.filter(
         content_type=request_content_type(obj),
         object_id=obj.id,

@@ -2338,6 +2338,16 @@ font-size:12px;
 margin-right:6px;
 }
 
+.badge-overdue{
+background:#ff2d2d;
+color:white;
+padding:5px 10px;
+border-radius:8px;
+font-size:12px;
+margin-right:6px;
+font-weight:bold;
+}
+
 .tracking-container{
 display:flex;
 flex-direction:column;
