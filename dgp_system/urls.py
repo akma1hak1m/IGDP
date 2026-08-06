@@ -43,21 +43,21 @@ urlpatterns = [
     path("status-update/", views.status_update, name="status_update"),
 
     # KEEP ONLY THIS ONE
-    path("status-update/<int:request_id>/", views.status_update, name="status_update"),
+    path("status-update/<str:borang_type>/<int:request_id>/", views.status_update, name="status_update"),
 
-    path('upload-data/<int:request_id>/', views.upload_data, name='upload_data'),
+    path('upload-data/<str:borang_type>/<int:request_id>/', views.upload_data, name='upload_data'),
 
-    path("update-status/<int:request_id>/<str:new_status>/", views.update_status, name="update_status"),
+    path("update-status/<str:borang_type>/<int:request_id>/<str:new_status>/", views.update_status, name="update_status"),
     
-    path("verify/<int:request_id>/", views.verify_data, name="verify_data"),
+    path("verify/<str:borang_type>/<int:request_id>/", views.verify_data, name="verify_data"),
 
     path("admin-borang/", views.admin_borang, name="admin_borang"),
 
     path('pengarah/', views.pengarah_dashboard, name='pengarah_dashboard'),
 
-    path('approve/<int:request_id>/', views.approve_request, name='approve_request'),
+    path('approve/<str:borang_type>/<int:request_id>/', views.approve_request, name='approve_request'),
 
-    path('assign/<int:request_id>/', views.assign_pic, name='assign_pic'),
+    path('assign/<str:borang_type>/<int:request_id>/', views.assign_pic, name='assign_pic'),
 
     path('assign-pic/', views.assign_pic_page, name='assign_pic_page'),
 

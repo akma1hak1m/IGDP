@@ -14,10 +14,11 @@
         <div class="assign-info">
             <h3>{{ req.namapemohon }}</h3>
             <p>{{ req.email }}</p>
+            <p>{{ req.borang_type }} #{{ req.id }}</p>
         </div>
 
         <!-- RIGHT -->
-        <form method="POST" action="{% url 'assign_pic' req.id %}" class="assign-form">
+        <form method="POST" action="{% url 'assign_pic' req.borang_type req.id %}" class="assign-form">
             {% csrf_token %}
 
             <div class="assign-action">

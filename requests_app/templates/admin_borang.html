@@ -49,10 +49,10 @@
             <p>{{ r.negeri }}</p>
 
             <p><b>Daerah</b></p>
-            <p>{{ r.daerah }}</p>
+            <p>{% firstof r.daerah r.daerah_text "-" %}</p>
 
             <p><b>Mukim</b></p>
-            <p>{{ r.mukim }}</p>
+            <p>{% firstof r.mukim r.mukim_text "-" %}</p>
 
             <p><b>Indeks Peta Topo</b></p>
             <p>{{ r.indeks }}</p>
@@ -80,26 +80,15 @@
             <p><b>Klasifikasi Data</b></p>
             <p>{{ r.klasifikasidata }}</p>
 
-            {% if r.namaagensikerjasama or r.namaprojek or r.tarikhprojek %}
+            {% if r.namaagensi or r.namaprojek or r.tarikhprojek %}
             <p><b>Agensi Kerjasama</b></p>
-            <p>{{ r.namaagensikerjasama }}</p>
+            <p>{{ r.namaagensi }}</p>
 
             <p><b>Nama Projek</b></p>
             <p>{{ r.namaprojek }}</p>
 
             <p><b>Tarikh Projek</b></p>
             <p>{{ r.tarikhprojek }}</p>
-            {% endif %}
-
-            {% if r.namaagensiluar or r.namaprojekluar or r.tarikhprojekluar %}
-            <p><b>Agensi Luar</b></p>
-            <p>{{ r.namaagensiluar }}</p>
-
-            <p><b>Nama Projek (Luar)</b></p>
-            <p>{{ r.namaprojekluar }}</p>
-
-            <p><b>Tarikh Projek (Luar)</b></p>
-            <p>{{ r.tarikhprojekluar }}</p>
             {% endif %}
 
             {% endif %}
@@ -116,21 +105,64 @@
             <p class="status-title">Status</p>
 
             <p class="status-value">
-                {{ r.get_status_display }}
+                {{ r.status }}
             </p>
 
         </div>
 
-    
+        <div class="action-forms">
 
-{% for group in request.user.groups.all %}
-    {% if group.name == "Admin" or group.name == "PIC" %}
-        <a href="{% url 'status_update' r.id %}" class="submit-btn">
-            Kemaskini Status
-        </a>
-    {% endif %}
-{% endfor %}
+        {% for group in request.user.groups.all %}
 
+            {% if group.name == "Pengarah Bahagian" and r.status == "Borang Telah Dihantar" %}
+            <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
+                {% csrf_token %}
+                <textarea name="sebab_tolak" placeholder="Sebab tidak disokong (jika perlu)"></textarea>
+                <button type="submit" name="action" value="approve" class="btn-approve">✔ Sokong</button>
+                <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Sokong</button>
+            </form>
+            {% endif %}
+
+            {% if group.name == "Pengarah BITG" and r.status == "Disokong Oleh Pengarah Bahagian" %}
+            <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
+                {% csrf_token %}
+                <textarea name="ulasan" placeholder="Ulasan"></textarea>
+                <textarea name="sebab_tolak" placeholder="Sebab tidak disokong (jika perlu)"></textarea>
+                <button type="submit" name="action" value="approve" class="btn-approve">✔ Lulus</button>
+                <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Lulus</button>
+            </form>
+            {% endif %}
+
+            {% if group.name == "Pengurus Pengkalan Data" and r.borang_type == "SERAHAN" and r.status == "Pengesahan Verifikasi" %}
+            <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+                {% csrf_token %}
+                <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
+                <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan & Serah</button>
+                <button type="submit" name="action" value="reject" class="btn-reject">✘ Kembali Verifikasi</button>
+            </form>
+            {% endif %}
+
+            {% if group.name == "PIC" and r.borang_type == "SERAHAN" and r.status == "Verifikasi Data Oleh PIC" or group.name == "PIC" and r.borang_type == "SERAHAN" and r.status == "Pembetulan Data" %}
+            <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+                {% csrf_token %}
+                <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
+                <button type="submit" name="action" value="approve" class="btn-approve">✔ Sah</button>
+                <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Sah</button>
+            </form>
+            {% endif %}
+
+        {% endfor %}
+
+        {% if request.user == r.pemohon and r.borang_type == "PINJAMAN" and r.status == "Serahan Data" %}
+        <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+            {% csrf_token %}
+            <textarea name="sebab_tolak" placeholder="Sebab (jika perlu)"></textarea>
+            <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan Penerimaan</button>
+            <button type="submit" name="action" value="reject" class="btn-reject">✘ Kembali Penyediaan</button>
+        </form>
+        {% endif %}
+
+        </div>
 
     </div>
 

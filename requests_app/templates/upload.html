@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="glass-card form-card fade-in">
+
+<h2 class="flow-title">TUGASAN PIC</h2>
+
+<div class="divider-line"></div>
+
+{% for r in requests %}
+
+<div class="approval-card">
+
+    <div class="approval-header">
+        <span class="badge-type">{{ r.borang_type }}</span>
+        <span class="request-id">#{{ r.id }}</span>
+    </div>
+
+    <div class="approval-body">
+        <div class="info">
+            <p><b>Nama:</b> {{ r.namapemohon }}</p>
+            <p><b>Email:</b> {{ r.email }}</p>
+            <p><b>Negeri:</b> {{ r.negeri }}</p>
+            {% if r.deadline %}
+            <p><b>Tarikh Akhir Penyediaan:</b> {{ r.deadline|date:"d/m/Y H:i" }}</p>
+            {% endif %}
+        </div>
+        <div class="status-box">
+            <p>Status</p>
+            <span class="status-badge">{{ r.status }}</span>
+        </div>
+    </div>
+
+    <div class="approval-actions">
+        {% if r.uploaded_file %}
+        <a href="{{ r.uploaded_file.url }}" target="_blank" class="btn-assign">Muat Turun Data</a>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data" action="{% url 'upload_data' r.borang_type r.id %}">
+            {% csrf_token %}
+            <input type="file" name="data_file" required>
+            <button type="submit" class="btn-approve">Muat Naik Data</button>
+        </form>
+
+        {% if r.borang_type == "SERAHAN" %}
+        <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+            {% csrf_token %}
+            <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
+            <button type="submit" name="action" value="approve" class="btn-approve">✔ Verifikasi Sah</button>
+            <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Sah / Pembetulan</button>
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+
+{% empty %}
+<p style="text-align:center;">Tiada Tugasan</p>
+{% endfor %}
+
+</div>
+
+{% endblock %}

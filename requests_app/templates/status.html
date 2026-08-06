@@ -20,6 +20,7 @@
             {% endif %}
 
             <span class="borang-id">#{{ r.id }}</span>
+            <span class="status-value">{{ r.status }}</span>
         </div>
 
         <span class="arrow" id="arrow{{ r.id }}">▼</span>
@@ -52,10 +53,10 @@
                     <p>{{ r.negeri }}</p>
 
                     <p><b>Daerah:</b></p>
-                    <p>{{ r.daerah }}</p>
+                    <p>{% firstof r.daerah r.daerah_text "-" %}</p>
 
                     <p><b>Mukim:</b></p>
-                    <p>{{ r.mukim }}</p>
+                    <p>{% firstof r.mukim r.mukim_text "-" %}</p>
 
                     <p><b>Indeks Peta Topo:</b></p>
                     <p>{{ r.indeks }}</p>
@@ -83,26 +84,15 @@
                     <p><b>Klasifikasi Data:</b></p>
                     <p>{{ r.klasifikasidata }}</p>
 
-                    {% if r.namaagensikerjasama or r.namaprojek or r.tarikhprojek %}
+                    {% if r.namaagensi or r.namaprojek or r.tarikhprojek %}
                     <p><b>Agensi Kerjasama:</b></p>
-                    <p>{{ r.namaagensikerjasama }}</p>
+                    <p>{{ r.namaagensi }}</p>
 
                     <p><b>Nama Projek:</b></p>
                     <p>{{ r.namaprojek }}</p>
 
                     <p><b>Tarikh Projek:</b></p>
                     <p>{{ r.tarikhprojek }}</p>
-                    {% endif %}
-
-                    {% if r.namaagensiluar or r.namaprojekluar or r.tarikhprojekluar %}
-                    <p><b>Agensi Luar:</b></p>
-                    <p>{{ r.namaagensiluar }}</p>
-
-                    <p><b>Nama Projek (Luar):</b></p>
-                    <p>{{ r.namaprojekluar }}</p>
-
-                    <p><b>Tarikh Projek (Luar):</b></p>
-                    <p>{{ r.tarikhprojekluar }}</p>
                     {% endif %}
 
                     {% elif r.borang_type == "PINJAMAN" %}
@@ -119,49 +109,48 @@
                     <p><b>Tarikh:</b></p>
                     <p>{{ r.Tarikh }}</p>
 
+                    {% if r.deadline %}
+                    <p><b>Tarikh Akhir Penyediaan:</b></p>
+                    <p>{{ r.deadline|date:"d/m/Y H:i" }}</p>
                     {% endif %}
 
+                    {% endif %}
+
+                    {% if r.uploaded_file %}
+                    <p><b>Fail Data:</b></p>
+                    <p><a href="{{ r.uploaded_file.url }}" target="_blank">Muat Turun</a></p>
+                    {% endif %}
+
+                    <p><b>PIC:</b></p>
+                    <p>{% if r.pic %}{{ r.pic.username }}{% else %}-{% endif %}</p>
+
                 </div>
+
+                {% if r.status_logs %}
+                <div class="details-box">
+                    <p><b>Sejarah Status:</b></p>
+                    {% for log in r.status_logs %}
+                    <p class="log-line">
+                        [{{ log.changed_at|date:"d/m/Y H:i" }}] {{ log.changed_by.username }} →
+                        {{ log.status }}
+                        {% if log.ulasan %}<br><i>Ulasan: {{ log.ulasan }}</i>{% endif %}
+                        {% if log.sebab_tolak %}<br><i>Sebab: {{ log.sebab_tolak }}</i>{% endif %}
+                    </p>
+                    {% endfor %}
+                </div>
+                {% endif %}
 
             </div>
 
             <!-- RIGHT SIDE TRACKING -->
             <div class="tracking-container">
 
-                <div class="tracking-step {% if r.status == 'Borang Telah Dihantar' or r.status == 'Pengarah Bahagian Telah Sahkan' or r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
+                {% for step in r.steps %}
+                <div class="tracking-step {% if forloop.counter0 <= r.step_idx %}completed{% endif %}">
                     <div class="circle"></div>
-                    <div class="label">Borang Telah Dihantar</div>
+                    <div class="label">{{ step }}</div>
                 </div>
-
-                <div class="tracking-step {% if r.status == 'Pengarah Bahagian Telah Sahkan' or r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Pengarah Bahagian Telah Sahkan</div>
-                </div>
-
-                <div class="tracking-step {% if r.status == 'Mendapat Kelulusan Daripada Pengarah Bahagian Pembangunan ICT Dan Geoinformatik' or r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Kelulusan Pengarah BITG</div>
-                </div>
-
-                <div class="tracking-step {% if r.status == 'Penugasan PIC' or r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Penugasan PIC</div>
-                </div>
-
-                <div class="tracking-step {% if r.status == 'Data Telah Di-email' or r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Data Telah Di-email</div>
-                </div>
-
-                <div class="tracking-step {% if r.status == 'Pemohon Telah Mengesahkan Data' or r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Pemohon Sahkan Data</div>
-                </div>
-
-                <div class="tracking-step {% if r.status == 'Selesai' %}completed{% endif %}">
-                    <div class="circle"></div>
-                    <div class="label">Selesai</div>
-                </div>
+                {% endfor %}
 
             </div>
 
