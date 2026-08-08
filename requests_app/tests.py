@@ -33,7 +33,6 @@ class FlowTestBase(TestCase):
         cls.pemohon = make_user("pemohon", "Staff", bahagian=cls.bs)
         cls.pb = make_user("pb", "Pengarah Bahagian", bahagian=cls.bs)
         cls.bitg = make_user("bitg", "Pengarah Bahagian", bahagian=cls.bitg_b)
-        cls.pengurus = make_user("pengurus", "Pengurus Pengkalan Data")
         cls.pic = make_user("pic", "PIC")
 
     def c(self, user):
@@ -145,7 +144,7 @@ class FlowTestBase(TestCase):
         s.refresh_from_db()
         self.assertEqual(s.status, "Mendapat Kelulusan Pengarah BITG")
 
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         s.refresh_from_db()
         self.assertEqual(s.status, "Verifikasi Data Oleh PIC")
         self.assertEqual(s.pic, self.pic)
@@ -154,7 +153,7 @@ class FlowTestBase(TestCase):
         s.refresh_from_db()
         self.assertEqual(s.status, "Pengesahan Verifikasi")
 
-        self.verify(s, self.pengurus, "approve")
+        self.verify(s, self.bitg, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Selesai")
 
@@ -190,7 +189,7 @@ class FlowTestBase(TestCase):
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
 
         self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
         s.refresh_from_db()
@@ -214,12 +213,12 @@ class FlowTestBase(TestCase):
 
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         self.verify(s, self.pic, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pengesahan Verifikasi")
 
-        self.verify(s, self.pengurus, "approve")
+        self.verify(s, self.bitg, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Selesai")
 
@@ -236,7 +235,7 @@ class FlowTestBase(TestCase):
 
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         self.verify(s, self.pic, "reject")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
@@ -257,7 +256,7 @@ class FlowTestBase(TestCase):
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         self.verify(s, self.pic, "reject")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
@@ -271,7 +270,7 @@ class FlowTestBase(TestCase):
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
         s.refresh_from_db()
 
@@ -289,7 +288,7 @@ class FlowTestBase(TestCase):
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         mail.outbox.clear()
 
         self.verify(s, self.pic, "reject", sebab_tolak="Data tidak lengkap")
@@ -298,14 +297,14 @@ class FlowTestBase(TestCase):
         tos = [email for m in mail.outbox for email in m.to]
         self.assertIn(self.pemohon.email, tos)
 
-    def test_serah_pengurus_reject_back_to_verify(self):
+    def test_serah_bitg_reject_back_to_verify(self):
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
-        self.assign(s, self.pengurus, self.pic)
+        self.assign(s, self.bitg, self.pic)
         self.verify(s, self.pic, "approve")
 
-        self.verify(s, self.pengurus, "reject", sebab_tolak="Semak semula")
+        self.verify(s, self.bitg, "reject", sebab_tolak="Semak semula")
         s.refresh_from_db()
         self.assertEqual(s.status, "Verifikasi Data Oleh PIC")
 
@@ -430,13 +429,64 @@ class FlowTestBase(TestCase):
 
         resp = self.c(self.pemohon).get(reverse("status"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "status-timeline")
-        self.assertContains(resp, "Disokong Oleh Pengarah Bahagian")
+        self.assertContains(resp, "req-table")
+        self.assertContains(resp, 'id="q"')
 
-        resp = self.c(self.pengurus).get(reverse("admin_borang"))
+        resp = self.c(self.bitg).get(reverse("admin_borang"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "req-table")
+
+    def test_request_detail_fragment_renders_timeline_and_actions(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve", ulasan="OK")
+
+        resp = self.c(self.bitg).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "status-timeline")
         self.assertContains(resp, "Ulasan: OK")
+        self.assertContains(resp, "Mendapat Kelulusan Pengarah BITG")
+
+        resp = self.c(self.pemohon).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "status-timeline")
+
+    def test_request_detail_forbidden_for_outsider(self):
+        _, s = self.submit_serah()
+        other = make_user("lain", "Staff")
+        resp = self.c(other).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_requests_list_search_and_pagination(self):
+        ids = []
+        for i in range(3):
+            _, s = self.submit_serah()
+            ids.append(s.id)
+        newest = max(ids)
+
+        resp = self.c(self.pemohon).get(reverse("requests_list"), {"scope": "my"})
+        data = resp.json()
+        self.assertEqual(data["total"], 3)
+        self.assertEqual(len(data["rows"]), 3)
+        self.assertEqual(data["rows"][0]["id"], newest)
+
+        resp = self.c(self.pemohon).get(
+            reverse("requests_list"), {"scope": "my", "q": str(ids[1])}
+        )
+        data = resp.json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["rows"][0]["id"], ids[1])
+
+        resp = self.c(self.pemohon).get(
+            reverse("requests_list"), {"scope": "my", "per_page": 10, "page": 1}
+        )
+        self.assertEqual(resp.status_code, 200)
 
     # ---------- applicant auto-fill ----------
 
@@ -494,12 +544,20 @@ class FlowTestBase(TestCase):
         pb_other = make_user("pb_bkp", "Pengarah Bahagian", bahagian=self.bkp)
         _, s = self.submit_serah()
 
-        resp = self.c(self.pb).get(reverse("pengarah_dashboard"))
-        self.assertContains(resp, f"#{s.id}")
-        self.assertContains(resp, s.namapemohon)
+        resp = self.c(self.pb).get(reverse("requests_list"), {"scope": "pb"})
+        self.assertEqual(resp.status_code, 200)
+        ids = [r["id"] for r in resp.json()["rows"]]
+        self.assertIn(s.id, ids)
 
-        resp = self.c(pb_other).get(reverse("pengarah_dashboard"))
-        self.assertNotContains(resp, f"#{s.id}")
+        resp = self.c(pb_other).get(reverse("requests_list"), {"scope": "pb"})
+        ids = [r["id"] for r in resp.json()["rows"]]
+        self.assertNotIn(s.id, ids)
+
+    def test_pb_dashboard_renders_table(self):
+        resp = self.c(self.pb).get(reverse("pengarah_dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "req-table")
+        self.assertContains(resp, 'id="q"')
 
     def test_pb_cannot_approve_foreign_bahagian(self):
         pb_other = make_user("pb_bkp", "Pengarah Bahagian", bahagian=self.bkp)
@@ -537,19 +595,22 @@ class FlowTestBase(TestCase):
         s = SerahanRequest.objects.latest("id")
         self.assertEqual(s.bahagian, self.bitg_b)
 
-        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
-        self.assertContains(resp, f"#{s.id}")
+        resp = self.c(self.bitg).get(reverse("requests_list"), {"scope": "bitg"})
+        ids = [r["id"] for r in resp.json()["rows"]]
+        self.assertIn(s.id, ids)
 
         _, s2 = self.submit_serah()
-        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
-        self.assertNotContains(resp, f"#{s2.id}")
+        resp = self.c(self.bitg).get(reverse("requests_list"), {"scope": "bitg"})
+        ids = [r["id"] for r in resp.json()["rows"]]
+        self.assertNotIn(s2.id, ids)
 
         self.approve(s2, self.pb, action="approve")
         s2.refresh_from_db()
         self.assertEqual(s2.status, "Disokong Oleh Pengarah Bahagian")
 
-        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
-        self.assertContains(resp, f"#{s2.id}")
+        resp = self.c(self.bitg).get(reverse("requests_list"), {"scope": "bitg"})
+        ids = [r["id"] for r in resp.json()["rows"]]
+        self.assertIn(s2.id, ids)
 
     def test_bitg_pb_can_approve_all_departments(self):
         pb_bkp = make_user("pb_bkp2", "Pengarah Bahagian", bahagian=self.bkp)

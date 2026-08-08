@@ -48,19 +48,19 @@
 {% endfor %}
 
 {% for group in request.user.groups.all %}
-    {% if group.name == "PIC" or group.name == "Admin" or group.name == "Pengarah Bahagian" or group.name == "Pengurus Pengkalan Data" %}
+    {% if group.name == "PIC" or group.name == "Admin" or group.name == "Pengarah Bahagian" %}
         <a href="{% url 'admin_borang' %}">Semakan Borang</a>
     {% endif %}
 {% endfor %}
 
 {% for group in request.user.groups.all %}
-    {% if group.name == "Pengarah Bahagian" or group.name == "Pengurus Pengkalan Data" %}
+    {% if group.name == "Pengarah Bahagian" %}
         <a href="{% url 'pengarah_dashboard' %}">Papan Kelulusan</a>
     {% endif %}
 {% endfor %}
 
 {% for group in request.user.groups.all %}
-    {% if group.name == "Pengurus Pengkalan Data" or group.name == "Pengarah Bahagian" and request.user.profile.bahagian.nama == "BITG" %}
+    {% if group.name == "Pengarah Bahagian" and request.user.profile.bahagian.nama == "BITG" %}
         <a href="{% url 'assign_pic_page' %}">Penugasan PIC</a>
     {% endif %}
 {% endfor %}

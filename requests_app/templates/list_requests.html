@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="glass-card form-card fade-in">
+
+<h2 class="flow-title">{{ page_title }}</h2>
+<div class="divider-line"></div>
+
+<div class="filter-row">
+    <input type="text" id="q" class="search-input" placeholder="Cari ID / Nama / Email...">
+    <div class="filter-type">
+        <label><input type="checkbox" name="type" value="SERAHAN" checked> Serahan</label>
+        <label><input type="checkbox" name="type" value="PINJAMAN" checked> Pinjaman</label>
+    </div>
+    <select id="f-status">
+        <option value="">Semua Status</option>
+        {% for s in status_options %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+    </select>
+    <select id="f-negeri">
+        <option value="">Semua Negeri</option>
+        {% for n in negeri_options %}<option value="{{ n.nama }}">{{ n.nama }}</option>{% endfor %}
+    </select>
+    <select id="f-bahagian">
+        <option value="">Semua Bahagian</option>
+        {% for b in bahagian_options %}<option value="{{ b.nama }}">{{ b.nama }}</option>{% endfor %}
+    </select>
+    <select id="f-perpage">
+        {% for n in per_page_options %}<option value="{{ n }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ n }} / muka</option>{% endfor %}
+    </select>
+</div>
+
+<table class="req-table">
+    <thead>
+        <tr>
+            <th data-sort="id">ID</th>
+            <th data-sort="borang_type">Jenis</th>
+            <th data-sort="namapemohon">Pemohon</th>
+            <th data-sort="bahagian">Bahagian</th>
+            <th data-sort="status">Status</th>
+            <th data-sort="created_at">Tarikh</th>
+        </tr>
+    </thead>
+    <tbody id="rows">
+        <tr><td colspan="6" class="empty-text">Memuat...</td></tr>
+    </tbody>
+</table>
+
+<div id="pager" class="pager"></div>
+
+</div>
+
+<div id="detail-overlay" class="detail-overlay" onclick="closeDetail(event)">
+    <aside id="detail-sidebar" class="detail-sidebar">
+        <button type="button" class="detail-close" onclick="closeDetail({target:document.getElementById('detail-overlay')})">&times;</button>
+        <div id="detail-body"></div>
+    </aside>
+</div>
+
+<style>
+.req-table { width:100%; border-collapse:collapse; margin-top:14px; }
+.req-table th, .req-table td { padding:10px 12px; text-align:left; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
+.req-table th { cursor:pointer; color:#8ab4f8; user-select:none; white-space:nowrap; }
+.req-table th:hover { color:#fff; }
+.req-table th.sort-desc::after { content:" ▼"; }
+.req-table th.sort-asc::after { content:" ▲"; }
+.req-table tbody tr { cursor:pointer; transition:background .15s; }
+.req-table tbody tr:hover { background:rgba(255,255,255,.06); }
+.req-table .row-id { color:#8ab4f8; font-weight:600; }
+.badge-type { padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#1a73e8; color:#fff; }
+.badge-pinjaman { padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#b26a00; color:#fff; }
+.badge-overdue { padding:2px 6px; border-radius:6px; font-size:10px; font-weight:700; background:#c62828; color:#fff; margin-left:6px; }
+.pager { display:flex; align-items:center; gap:6px; margin-top:16px; flex-wrap:wrap; }
+.pager button { padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:transparent; color:#e3f2fd; cursor:pointer; }
+.pager button:hover { background:rgba(255,255,255,.1); }
+.pager button.active { background:#1a73e8; border-color:#1a73e8; }
+.pager button:disabled { opacity:.4; cursor:default; }
+.pager .pager-total { margin-left:auto; color:#90a4ae; font-size:13px; }
+.filter-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+.filter-row select { padding:8px 10px; border-radius:8px; background:#0f2233; color:#e3f2fd; border:1px solid rgba(255,255,255,.15); }
+.filter-type { display:flex; gap:10px; color:#e3f2fd; font-size:14px; }
+.search-input { flex:1; min-width:180px; }
+
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(2,12,22,.72); z-index:1000; justify-content:flex-end; }
+.detail-overlay.open { display:flex; }
+.detail-sidebar { width:min(560px, 94vw); height:100%; background:#0b1b2b; border-left:1px solid rgba(255,255,255,.12); overflow-y:auto; padding:20px 22px; position:relative; }
+.detail-close { position:sticky; top:0; float:right; font-size:26px; line-height:1; background:none; border:none; color:#8ab4f8; cursor:pointer; }
+.detail-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.detail-head .status-badge { margin-left:auto; }
+.detail-actions form { margin-bottom:10px; }
+.detail-actions textarea { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; resize:vertical; }
+.detail-actions .btn-approve, .detail-actions .btn-reject { margin-right:6px; }
+</style>
+
+<script>
+const SCOPE = "{{ scope }}";
+const state = { page: 1, per_page: 15, q: "", type: ["SERAHAN", "PINJAMAN"], status: "", negeri: "", bahagian: "", sort: "created_at", order: "desc" };
+let current = null;
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { const d = document.createElement("div"); d.textContent = (s == null) ? "" : String(s); return d.innerHTML; }
+
+function params() {
+    const p = new URLSearchParams();
+    p.set("scope", SCOPE);
+    p.set("page", state.page);
+    p.set("per_page", state.per_page);
+    if (state.q) p.set("q", state.q);
+    state.type.forEach(t => p.append("type", t));
+    if (state.status) p.set("status", state.status);
+    if (state.negeri) p.set("negeri", state.negeri);
+    if (state.bahagian) p.set("bahagian", state.bahagian);
+    p.set("sort", state.sort);
+    p.set("order", state.order);
+    return p;
+}
+
+function loadRows() {
+    fetch("/requests-list/?" + params())
+        .then(r => r.json())
+        .then(d => { renderRows(d.rows); renderPager(d.page, d.pages, d.total); })
+        .catch(() => { $("rows").innerHTML = '<tr><td colspan="6" class="empty-text">Ralat memuat data</td></tr>'; });
+}
+
+function badge(bt) {
+    if (bt === "PINJAMAN") return '<span class="badge-pinjaman">PINJAMAN</span>';
+    return '<span class="badge-type">SERAHAN</span>';
+}
+
+function renderRows(rows) {
+    const tbody = $("rows");
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tiada rekod</td></tr>';
+        return;
+    }
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+            '<td class="row-id">#' + esc(r.id) + '</td>' +
+            '<td>' + badge(r.borang_type) + '</td>' +
+            '<td>' + esc(r.namapemohon) + '<br><small class="pager-total">' + esc(r.email) + '</small></td>' +
+            '<td>' + esc(r.bahagian || "-") + '</td>' +
+            '<td><span class="status-badge">' + esc(r.status) + '</span>' + (r.overdue ? '<span class="badge-overdue">TERLEWAT</span>' : '') + '</td>' +
+            '<td>' + esc(r.created_at ? new Date(r.created_at).toLocaleString("ms-MY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-") + '</td>';
+        tr.addEventListener("click", () => openDetail(r.borang_type, r.id));
+        tbody.appendChild(tr);
+    });
+}
+
+function renderPager(page, pages, total) {
+    const box = $("pager");
+    let html = '<button ' + (page <= 1 ? 'disabled' : '') + ' onclick="goPage(' + (page - 1) + ')">&#171;</button>';
+    for (let i = 1; i <= pages; i++) {
+        if (pages > 9 && i > 2 && i < pages - 1 && Math.abs(i - page) > 2) {
+            if (html.indexOf("...") === -1) html += '<button disabled>...</button>';
+            continue;
+        }
+        html += '<button class="' + (i === page ? 'active' : '') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+    }
+    html += '<button ' + (page >= pages ? 'disabled' : '') + ' onclick="goPage(' + (page + 1) + ')">&#187;</button>';
+    html += '<span class="pager-total">' + total + ' rekod</span>';
+    box.innerHTML = html;
+}
+
+function goPage(p) { state.page = p; loadRows(); }
+
+function openDetail(bt, id) {
+    current = { bt: bt, id: id };
+    $("detail-overlay").classList.add("open");
+    $("detail-body").innerHTML = '<p class="empty-text">Memuat...</p>';
+    fetch("/requests-detail/" + bt + "/" + id + "/")
+        .then(r => r.text())
+        .then(html => { $("detail-body").innerHTML = html; })
+        .catch(() => { $("detail-body").innerHTML = '<p class="empty-text">Ralat memuat butiran</p>'; });
+}
+
+function closeDetail(e) {
+    if (e && e.target && e.target.id === "detail-overlay") {
+        $("detail-overlay").classList.remove("open");
+    }
+}
+
+document.addEventListener("click", function (e) {
+    const th = e.target.closest("th[data-sort]");
+    if (!th) return;
+    const field = th.dataset.sort;
+    if (state.sort === field) {
+        state.order = state.order === "asc" ? "desc" : "asc";
+    } else {
+        state.sort = field;
+        state.order = "asc";
+    }
+    document.querySelectorAll("th[data-sort]").forEach(x => x.classList.remove("sort-asc", "sort-desc"));
+    th.classList.add(state.order === "asc" ? "sort-asc" : "sort-desc");
+    state.page = 1;
+    loadRows();
+});
+
+document.addEventListener("submit", function (e) {
+    const form = e.target.closest("#detail-body form");
+    if (!form) return;
+    e.preventDefault();
+    fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(r => {
+            if (!r.ok) throw new Error("fail");
+            return openDetail(current.bt, current.id);
+        })
+        .then(() => loadRows())
+        .catch(() => { $("detail-body").innerHTML = '<p class="empty-text">Ralat. Sila cuba lagi.</p>'; });
+});
+
+let debounce;
+$("q").addEventListener("input", function () {
+    clearTimeout(debounce);
+    debounce = setTimeout(function () {
+        state.q = $("q").value.trim();
+        state.page = 1;
+        loadRows();
+    }, 300);
+});
+$("f-status").addEventListener("change", function () { state.status = this.value; state.page = 1; loadRows(); });
+$("f-negeri").addEventListener("change", function () { state.negeri = this.value; state.page = 1; loadRows(); });
+$("f-bahagian").addEventListener("change", function () { state.bahagian = this.value; state.page = 1; loadRows(); });
+$("f-perpage").addEventListener("change", function () { state.per_page = parseInt(this.value, 10); state.page = 1; loadRows(); });
+document.querySelectorAll('input[name="type"]').forEach(function (cb) {
+    cb.addEventListener("change", function () {
+        state.type = Array.from(document.querySelectorAll('input[name="type"]:checked')).map(x => x.value);
+        state.page = 1;
+        loadRows();
+    });
+});
+
+loadRows();
+</script>
+
+{% endblock %}

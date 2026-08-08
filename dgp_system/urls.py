@@ -53,6 +53,10 @@ urlpatterns = [
 
     path("admin-borang/", views.admin_borang, name="admin_borang"),
 
+    path("requests-list/", views.requests_list, name="requests_list"),
+
+    path("requests-detail/<str:borang_type>/<int:request_id>/", views.request_detail, name="request_detail"),
+
     path('pengarah/', views.pengarah_dashboard, name='pengarah_dashboard'),
 
     path('approve/<str:borang_type>/<int:request_id>/', views.approve_request, name='approve_request'),

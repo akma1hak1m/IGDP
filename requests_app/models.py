@@ -203,7 +203,6 @@ class SerahanRequest(AbstractRequest):
         ("Disokong Oleh Pengarah Bahagian", "Disokong Oleh Pengarah Bahagian"),
         ("Tidak Mendapat Kelulusan Pengarah BITG", "Tidak Mendapat Kelulusan Pengarah BITG"),
         ("Mendapat Kelulusan Pengarah BITG", "Mendapat Kelulusan Pengarah BITG"),
-        ("Semakan Dan Penugasan Oleh Pengurus Pengkalan Data", "Semakan Dan Penugasan Oleh Pengurus Pengkalan Data"),
         ("Verifikasi Data Oleh PIC", "Verifikasi Data Oleh PIC"),
         ("Pembetulan Oleh Pemohon", "Pembetulan Oleh Pemohon"),
         ("Pengesahan Verifikasi", "Pengesahan Verifikasi"),

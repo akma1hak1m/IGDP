@@ -7,7 +7,6 @@ ROLES = {
     "pemohon": ["Staff"],
     "pengarah_bahagian": ["Pengarah Bahagian"],
     "pengarah_bitg": ["Pengarah Bahagian"],
-    "pengurus_pangkalan": ["Pengurus Pengkalan Data"],
     "pic": ["PIC"],
 }
 

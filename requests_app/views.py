@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseForbidden, HttpResponseNotFound, JsonResponse
 from django.contrib.auth.models import User, Group
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import send_mail
@@ -32,7 +32,6 @@ SERAHAN_STEPS = [
     "Disokong Oleh Pengarah Bahagian",
     "Tidak Mendapat Kelulusan Pengarah BITG",
     "Mendapat Kelulusan Pengarah BITG",
-    "Semakan Dan Penugasan Oleh Pengurus Pengkalan Data",
     "Verifikasi Data Oleh PIC",
     "Pembetulan Oleh Pemohon",
     "Pengesahan Verifikasi",
@@ -81,10 +80,6 @@ def is_bitg(user):
     return b is not None and b.nama == "BITG"
 
 
-def is_pengurus(user):
-    return has_group(user, "Pengurus Pengkalan Data")
-
-
 def is_pic(user):
     return has_group(user, "PIC")
 
@@ -99,7 +94,6 @@ def is_reviewer(user):
         or is_pic(user)
         or is_pengarah_bahagian(user)
         or is_bitg(user)
-        or is_pengurus(user)
     )
 
 
@@ -152,6 +146,84 @@ def merged_requests():
     for o in combined:
         annotate_steps(o)
     return combined
+
+
+SORT_FIELDS = {"id", "borang_type", "namapemohon", "email", "status", "bahagian", "created_at"}
+
+
+def request_base_segments(scope, user):
+    """List of (model, queryset) for a scope. Search/filters applied per segment."""
+    if scope == "my":
+        return [
+            (SerahanRequest, SerahanRequest.objects.filter(pemohon=user)),
+            (PinjamanRequest, PinjamanRequest.objects.filter(pemohon=user)),
+        ]
+    if scope == "all":
+        return [
+            (SerahanRequest, SerahanRequest.objects.all()),
+            (PinjamanRequest, PinjamanRequest.objects.all()),
+        ]
+    if scope in ("pb", "bitg"):
+        b = user_bahagian(user)
+        segments = [
+            (SerahanRequest, SerahanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)),
+            (PinjamanRequest, PinjamanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)),
+        ]
+        if scope == "bitg":
+            segments += [
+                (SerahanRequest, SerahanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")),
+                (PinjamanRequest, PinjamanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")),
+            ]
+        return segments
+    if scope == "pic":
+        return [
+            (SerahanRequest, SerahanRequest.objects.filter(pic=user, status="Verifikasi Data Oleh PIC")),
+            (PinjamanRequest, PinjamanRequest.objects.filter(pic=user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"])),
+        ]
+    return []
+
+
+def _sort_value(rec, field):
+    if field == "id":
+        return rec["id"]
+    if field == "borang_type":
+        return rec["bt"] or ""
+    if field == "bahagian":
+        return rec["bahagian"] or ""
+    if field == "created_at":
+        return rec["created_at"] or datetime.min
+    return rec.get(field) or ""
+
+
+def row_json(o):
+    overdue = bool(
+        o.borang_type == "PINJAMAN"
+        and o.deadline
+        and o.status in ["Penyediaan Data", "Pembetulan Oleh Pemohon"]
+        and timezone.now() > o.deadline
+    )
+    return {
+        "id": o.id,
+        "borang_type": o.borang_type,
+        "namapemohon": o.namapemohon,
+        "email": o.email,
+        "bahagian": o.bahagian.nama if o.bahagian_id else "",
+        "status": o.status,
+        "negeri": str(o.negeri) if o.negeri_id else "",
+        "created_at": o.created_at.isoformat() if o.created_at else None,
+        "overdue": overdue,
+        "pic": o.pic.username if o.pic_id else "",
+    }
+
+
+def request_list_context():
+    statuses = SERAHAN_STEPS + [s for s in PINJAMAN_STEPS if s not in SERAHAN_STEPS]
+    return {
+        "status_options": statuses,
+        "negeri_options": Negeri.objects.all(),
+        "bahagian_options": Bahagian.objects.all(),
+        "per_page_options": [10, 15, 20, 50],
+    }
 
 
 def send_notif(subject, message, recipient_list):
@@ -464,17 +536,12 @@ def borang_pinjaman(request):
 
 @login_required
 def status_view(request):
-    if is_reviewer(request.user):
-        combined = merged_requests()
-    else:
-        combined = (
-            list(SerahanRequest.objects.filter(pemohon=request.user))
-            + list(PinjamanRequest.objects.filter(pemohon=request.user))
-        )
-        combined.sort(key=lambda o: o.created_at, reverse=True)
-        for o in combined:
-            annotate_steps(o)
-    return render(request, "status.html", {"requests": combined})
+    scope = "all" if is_reviewer(request.user) else "my"
+    return render(request, "list_requests.html", {
+        "page_title": "STATUS PERMOHONAN DATA",
+        "scope": scope,
+        **request_list_context(),
+    })
 
 
 # =============================
@@ -486,55 +553,135 @@ def admin_borang(request):
     if not is_reviewer(request.user):
         return redirect("home")
 
-    keyword = request.GET.get("q", "").strip()
-    serah = SerahanRequest.objects.all()
-    pinjam = PinjamanRequest.objects.all()
-
-    if keyword:
-        k = Q(id__icontains=keyword) | Q(namapemohon__icontains=keyword) | Q(email__icontains=keyword) | Q(status__icontains=keyword) | Q(negeri__nama__icontains=keyword)
-        serah = serah.filter(k)
-        pinjam = pinjam.filter(k)
-
-    combined = list(serah) + list(pinjam)
-    combined.sort(key=lambda o: o.created_at, reverse=True)
-    for o in combined:
-        annotate_steps(o)
-
-    return render(request, "admin_borang.html", {"requests": combined, "keyword": keyword})
+    return render(request, "list_requests.html", {
+        "page_title": "SEMAKAN BORANG",
+        "scope": "all",
+        **request_list_context(),
+    })
 
 
 # =============================
-# PENGARAH / PENGURUS / PIC DASHBOARD
+# ASYNC LIST / DETAIL (pagination + filters)
+# =============================
+
+@login_required
+def requests_list(request):
+    user = request.user
+    scope = request.GET.get("scope", "my")
+    if scope not in {"my", "all", "pb", "bitg", "pic"}:
+        scope = "my"
+    if scope == "all" and not is_reviewer(user):
+        scope = "my"
+    if scope in ("pb", "bitg") and not is_pengarah_bahagian(user):
+        scope = "my"
+    if scope == "bitg" and not is_bitg(user):
+        scope = "pb"
+    if scope == "pic" and not is_pic(user):
+        scope = "my"
+
+    segments = request_base_segments(scope, user)
+
+    q = request.GET.get("q", "").strip()
+    statuses = [s for s in request.GET.getlist("status") if s]
+    negeris = [n for n in request.GET.getlist("negeri") if n]
+    bahagians = [b for b in request.GET.getlist("bahagian") if b]
+    types = [t for t in request.GET.getlist("type") if t in ("SERAHAN", "PINJAMAN")]
+
+    recs = []
+    for model, qs in segments:
+        bt = "SERAHAN" if model is SerahanRequest else "PINJAMAN"
+        if types and bt not in types:
+            continue
+        if q:
+            qs = qs.filter(Q(id__icontains=q) | Q(namapemohon__icontains=q) | Q(email__icontains=q))
+        if statuses:
+            qs = qs.filter(status__in=statuses)
+        if negeris:
+            qs = qs.filter(negeri__nama__in=negeris)
+        if bahagians:
+            qs = qs.filter(bahagian__nama__in=bahagians)
+        for row in qs.values("id", "namapemohon", "email", "status", "bahagian__nama", "negeri__nama", "created_at"):
+            row["bt"] = bt
+            row["bahagian"] = row.pop("bahagian__nama")
+            row["negeri"] = row.pop("negeri__nama")
+            recs.append(row)
+
+    sort = request.GET.get("sort", "created_at")
+    order = request.GET.get("order", "desc")
+    if sort not in SORT_FIELDS:
+        sort = "created_at"
+    if order not in ("asc", "desc"):
+        order = "desc"
+    recs.sort(key=lambda r: _sort_value(r, sort), reverse=(order == "desc"))
+
+    total = len(recs)
+    try:
+        per_page = int(request.GET.get("per_page", 15))
+    except (TypeError, ValueError):
+        per_page = 15
+    if per_page not in (10, 15, 20, 50):
+        per_page = 15
+    try:
+        page = int(request.GET.get("page", 1)) or 1
+    except (TypeError, ValueError):
+        page = 1
+    pages = max(1, -(-total // per_page)) if total else 1
+    if page > pages:
+        page = pages
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_recs = recs[start:end]
+
+    serah_ids = [r["id"] for r in page_recs if r["bt"] == "SERAHAN"]
+    pinjam_ids = [r["id"] for r in page_recs if r["bt"] == "PINJAMAN"]
+    objs = {}
+    for o in SerahanRequest.objects.filter(id__in=serah_ids).select_related("pic", "bahagian", "negeri"):
+        objs[("SERAHAN", o.id)] = o
+    for o in PinjamanRequest.objects.filter(id__in=pinjam_ids).select_related("pic", "bahagian", "negeri"):
+        objs[("PINJAMAN", o.id)] = o
+
+    rows = [row_json(objs[(r["bt"], r["id"])]) for r in page_recs if (r["bt"], r["id"]) in objs]
+    return JsonResponse({"rows": rows, "total": total, "page": page, "pages": pages, "per_page": per_page})
+
+
+@login_required
+def request_detail(request, borang_type, request_id):
+    obj = get_request_obj(borang_type, request_id)
+    if not obj:
+        return HttpResponseNotFound("Not found")
+
+    user = request.user
+    allowed = is_reviewer(user) or obj.pemohon_id == user.id or (obj.pic_id and obj.pic_id == user.id)
+    if not allowed:
+        return HttpResponseForbidden("Tiada akses")
+
+    annotate_steps(obj)
+    return render(request, "_request_detail.html", {
+        "r": obj,
+        "is_pengarah_bahagian": is_pengarah_bahagian(user),
+        "is_bitg": is_bitg(user),
+        "is_pic": is_pic(user),
+    })
+
+
+# =============================
+# PENGARAH / PIC DASHBOARD
 # =============================
 
 @login_required
 def pengarah_dashboard(request):
     user = request.user
-    qs = []
-
     if is_pengarah_bahagian(user):
-        b = user_bahagian(user)
-        qs = list(SerahanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)) + list(PinjamanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b))
-        if is_bitg(user):
-            qs += list(SerahanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")) + list(PinjamanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian"))
-    elif is_pengurus(user):
-        qs = list(SerahanRequest.objects.filter(status__in=["Mendapat Kelulusan Pengarah BITG", "Pengesahan Verifikasi"]))
+        scope = "bitg" if is_bitg(user) else "pb"
     elif is_pic(user):
-        qs = list(SerahanRequest.objects.filter(pic=user, status="Verifikasi Data Oleh PIC")) + list(PinjamanRequest.objects.filter(pic=user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"]))
+        scope = "pic"
     else:
         return redirect("home")
 
-    qs.sort(key=lambda o: o.created_at, reverse=True)
-    for o in qs:
-        annotate_steps(o)
-
-    return render(request, "pengarah_dashboard.html", {
-        "requests": qs,
-        "is_pengarah_bahagian": is_pengarah_bahagian(user),
-        "is_bitg": is_bitg(user),
-        "is_pengurus": is_pengurus(user),
-        "is_pic": is_pic(user),
-        "users": User.objects.filter(groups__name="PIC"),
+    return render(request, "list_requests.html", {
+        "page_title": "PAPAN KELULUSAN",
+        "scope": scope,
+        **request_list_context(),
     })
 
 
@@ -577,7 +724,7 @@ def approve_request(request, borang_type, request_id):
             log_status(data, "Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan)
             send_notif("Permohonan Diluluskan (BITG)", f"Permohonan ID {data.id} telah diluluskan oleh Pengarah BITG.\nUlasan: {ulasan or '-'}", [data.email])
             if data.borang_type == "SERAHAN":
-                send_notif("Permohonan Memerlukan Semakan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk semakan & penugasan.", group_emails("Pengurus Pengkalan Data"))
+                send_notif("Permohonan Memerlukan Penugasan PIC", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", bitg_emails())
             else:
                 send_notif("Permohonan Memerlukan Penugasan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", bitg_emails())
     else:
@@ -605,12 +752,11 @@ def assign_pic(request, borang_type, request_id):
         if not pic_user:
             return redirect("assign_pic_page")
 
-        # SERAHAN: Pengurus Pengkalan Data assigns
-        if data.borang_type == "SERAHAN" and is_pengurus(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
+        # SERAHAN / PINJAMAN: BITG-level Pengarah assigns
+        if data.borang_type == "SERAHAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
             data.pic = pic_user
             data.save()
             log_status(data, "Verifikasi Data Oleh PIC", user)
-        # PINJAMAN: BITG-level Pengarah assigns
         elif data.borang_type == "PINJAMAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
             data.pic = pic_user
             data.deadline = timezone.now() + timedelta(days=5)
@@ -629,13 +775,11 @@ def assign_pic(request, borang_type, request_id):
 @login_required
 def assign_pic_page(request):
     user = request.user
-    if is_pengurus(user):
-        borang_list = SerahanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG")
-    elif is_bitg(user):
-        borang_list = PinjamanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG")
-    else:
+    if not is_bitg(user):
         return redirect("home")
 
+    borang_list = list(SerahanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG")) + list(PinjamanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG"))
+    borang_list.sort(key=lambda o: o.created_at, reverse=True)
     for o in borang_list:
         annotate_steps(o)
 
@@ -671,13 +815,13 @@ def verify_data(request, borang_type, request_id):
                 f"Data permohonan ID {data.id} perlu pembetulan.\nSebab: {sebab}\nSila login untuk mengedit dan menghantar semula.",
                 [data.email],
             )
-            send_notif("Pembetulan Diperlukan", f"Permohonan ID {data.id} dikembalikan kepada pemohon untuk pembetulan.\nSebab: {sebab}", group_emails("Pengurus Pengkalan Data"))
+            send_notif("Pembetulan Diperlukan", f"Permohonan ID {data.id} dikembalikan kepada pemohon untuk pembetulan.\nSebab: {sebab}", bitg_emails())
         else:
             log_status(data, "Pengesahan Verifikasi", user)
-            send_notif("Verifikasi Data Selesai", f"Verifikasi permohonan ID {data.id} selesai.", group_emails("Pengurus Pengkalan Data"))
+            send_notif("Verifikasi Data Selesai", f"Verifikasi permohonan ID {data.id} selesai.", bitg_emails())
 
-    # SERAHAN: Pengurus sahkan verifikasi -> serahan -> selesai
-    elif data.borang_type == "SERAHAN" and is_pengurus(user) and data.status == "Pengesahan Verifikasi":
+    # SERAHAN: BITG sahkan verifikasi -> serahan -> selesai
+    elif data.borang_type == "SERAHAN" and is_bitg(user) and data.status == "Pengesahan Verifikasi":
         if action == "reject":
             log_status(data, "Verifikasi Data Oleh PIC", user, sebab_tolak=sebab or "-")
         else:
@@ -711,14 +855,12 @@ def verify_data(request, borang_type, request_id):
 def upload_page(request):
     if not is_pic(request.user):
         return redirect("home")
-    tasks = (
-        list(SerahanRequest.objects.filter(pic=request.user, status="Verifikasi Data Oleh PIC"))
-        + list(PinjamanRequest.objects.filter(pic=request.user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"]))
-    )
-    tasks.sort(key=lambda o: o.created_at, reverse=True)
-    for o in tasks:
-        annotate_steps(o)
-    return render(request, "upload.html", {"requests": tasks})
+
+    return render(request, "list_requests.html", {
+        "page_title": "TUGASAN PIC",
+        "scope": "pic",
+        **request_list_context(),
+    })
 
 
 # =============================
@@ -727,7 +869,7 @@ def upload_page(request):
 
 @login_required
 def status_update(request, borang_type=None, request_id=None):
-    if not (is_admin(request.user) or is_pic(request.user) or is_pengurus(request.user)):
+    if not (is_admin(request.user) or is_pic(request.user)):
         return redirect("home")
 
     all_requests = merged_requests()
