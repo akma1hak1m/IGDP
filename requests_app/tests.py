@@ -6,26 +6,33 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User, Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
-from requests_app.models import SerahanRequest, PinjamanRequest, StatusLog
+from requests_app.models import SerahanRequest, PinjamanRequest, StatusLog, Bahagian, UserProfile
 
 PASSWORD = "p@ssw0rd"
 
 
-def make_user(username, group_name):
+def make_user(username, group_name, bahagian=None):
     user = User.objects.create_user(
         username=username, email=f"{username}@mysa.local", password=PASSWORD
     )
     group, _ = Group.objects.get_or_create(name=group_name)
     user.groups.add(group)
+    if bahagian is not None:
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.bahagian = bahagian
+        profile.save()
     return user
 
 
 class FlowTestBase(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.pemohon = make_user("pemohon", "Staff")
-        cls.pb = make_user("pb", "Pengarah Bahagian")
-        cls.bitg = make_user("bitg", "Pengarah BITG")
+        cls.bs, _ = Bahagian.objects.get_or_create(nama="BS")
+        cls.bkp, _ = Bahagian.objects.get_or_create(nama="BKP")
+        cls.bitg_b, _ = Bahagian.objects.get_or_create(nama="BITG")
+        cls.pemohon = make_user("pemohon", "Staff", bahagian=cls.bs)
+        cls.pb = make_user("pb", "Pengarah Bahagian", bahagian=cls.bs)
+        cls.bitg = make_user("bitg", "Pengarah Bahagian", bahagian=cls.bitg_b)
         cls.pengurus = make_user("pengurus", "Pengurus Pengkalan Data")
         cls.pic = make_user("pic", "PIC")
 
@@ -187,8 +194,27 @@ class FlowTestBase(TestCase):
 
         self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
         s.refresh_from_db()
-        self.assertEqual(s.status, "Pembetulan Data")
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+        log = StatusLog.objects.filter(
+            object_id=s.id, borang_type="SERAHAN"
+        ).order_by("id").last()
+        self.assertEqual(log.sebab_tolak, "Salah unjuran")
 
+        s2_id = s.id
+        resp = self.c(self.pemohon).post(
+            reverse("borang_serahan_edit", args=[s.id]),
+            self.serah_payload(**{"komponen_data": ["Jalan", "Sungai", "DEM"]}),
+        )
+        self.assertEqual(resp.status_code, 302)
+        s.refresh_from_db()
+        self.assertEqual(s.id, s2_id)
+        self.assertEqual(s.status, "Borang Telah Dihantar")
+        self.assertIsNone(s.pic)
+        self.assertEqual(s.komponen_data, "Jalan, Sungai, DEM")
+
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.pengurus, self.pic)
         self.verify(s, self.pic, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pengesahan Verifikasi")
@@ -196,6 +222,81 @@ class FlowTestBase(TestCase):
         self.verify(s, self.pengurus, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Selesai")
+
+    def test_serah_edit_guards(self):
+        _, s = self.submit_serah()
+        other = make_user("pemohon2", "Staff")
+
+        resp = self.c(other).post(
+            reverse("borang_serahan_edit", args=[s.id]), self.serah_payload()
+        )
+        self.assertEqual(resp.status_code, 302)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Borang Telah Dihantar")
+
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.pengurus, self.pic)
+        self.verify(s, self.pic, "reject")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+
+        wrong = make_user("pemohon3", "Staff")
+        resp = self.c(wrong).post(
+            reverse("borang_serahan_edit", args=[s.id]), self.serah_payload()
+        )
+        self.assertEqual(resp.status_code, 302)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+
+        self.approve(s, self.pb, action="approve")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+
+    def test_serah_pic_cannot_act_during_pemohon_correction(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.pengurus, self.pic)
+        self.verify(s, self.pic, "reject")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+
+        resp = self.verify(s, self.pic, "approve")
+        self.assertEqual(resp.status_code, 403)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
+
+    def test_serah_edit_page_renders_with_prefill(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.pengurus, self.pic)
+        self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
+        s.refresh_from_db()
+
+        resp = self.c(self.pemohon).get(
+            reverse("borang_serahan_edit", args=[s.id])
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "HANTAR SEMULA")
+        self.assertContains(resp, 'name="komponen_data" value="Jalan" checked')
+        self.assertContains(resp, "Mengedit Permohonan")
+
+    def test_serah_pic_reject_sends_email_to_pemohon(self):
+        from django.core import mail
+
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.pengurus, self.pic)
+        mail.outbox.clear()
+
+        self.verify(s, self.pic, "reject", sebab_tolak="Data tidak lengkap")
+        subjects = [m.subject for m in mail.outbox]
+        self.assertIn("Pembetulan Diperlukan", subjects)
+        tos = [email for m in mail.outbox for email in m.to]
+        self.assertIn(self.pemohon.email, tos)
 
     def test_serah_pengurus_reject_back_to_verify(self):
         _, s = self.submit_serah()
@@ -246,51 +347,6 @@ class FlowTestBase(TestCase):
         self.assertEqual(p.pic, self.pic)
         self.assertIsNotNone(p.deadline)
 
-        self.upload(p, self.pic)
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Serahan Data")
-        self.assertTrue(p.uploaded_file)
-
-        self.verify(p, self.pemohon, "approve")
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Selesai")
-
-        self.assertEqual(
-            self.log_chain(p),
-            [
-                "Borang Telah Dihantar",
-                "Disokong Oleh Pengarah Bahagian",
-                "Mendapat Kelulusan Pengarah BITG",
-                "Penyediaan Data",
-                "Serahan Data",
-                "Sahkan Penerimaan Data",
-                "Selesai",
-            ],
-        )
-
-    def test_pinjam_pemohon_reject_loop(self):
-        _, p = self.submit_pinjam()
-        self.approve(p, self.pb, action="approve")
-        self.approve(p, self.bitg, action="approve")
-        self.assign(p, self.bitg, self.pic)
-        self.upload(p, self.pic)
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Serahan Data")
-
-        self.verify(p, self.pemohon, "reject", sebab_tolak="Data tidak tepat")
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Penyediaan Data")
-        logs = self.log_chain(p)
-        self.assertIn("Pembetulan Oleh Pemohon", logs)
-
-        self.upload(p, self.pic)
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Serahan Data")
-
-        self.verify(p, self.pemohon, "approve")
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Selesai")
-
     # ---------- permissions ----------
 
     def test_staff_cannot_approve(self):
@@ -319,10 +375,7 @@ class FlowTestBase(TestCase):
         self.approve(p, self.bitg, action="approve")
         self.assign(p, self.bitg, self.pic)
 
-        resp = self.c(other_pic).post(
-            reverse("upload_data", args=[p.borang_type, p.id]),
-            {"data_file": SimpleUploadedFile("x.txt", b"x")},
-        )
+        resp = self.verify(p, other_pic, "approve")
         self.assertEqual(resp.status_code, 403)
         p.refresh_from_db()
         self.assertEqual(p.status, "Penyediaan Data")
@@ -407,9 +460,111 @@ class FlowTestBase(TestCase):
                 "password": "password123",
                 "confirm": "password123",
                 "telefon": "0199999999",
+                "bahagian": self.bs.id,
             },
         )
         self.assertEqual(resp.status_code, 302)
         user = User.objects.get(username="newuser")
         self.assertEqual(user.first_name, "Test User")
         self.assertEqual(user.profile.phone, "0199999999")
+        self.assertEqual(user.profile.bahagian, self.bs)
+
+    def test_register_requires_bahagian(self):
+        c = Client()
+        resp = c.post(
+            reverse("register"),
+            {
+                "fullname": "Test User",
+                "username": "nobahagian",
+                "email": "nb@x.com",
+                "password": "password123",
+                "confirm": "password123",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(User.objects.filter(username="nobahagian").exists())
+
+    # ---------- bahagian routing ----------
+
+    def test_serah_snapshot_bahagian(self):
+        _, s = self.submit_serah()
+        self.assertEqual(s.bahagian, self.bs)
+
+    def test_pb_dashboard_filters_by_bahagian(self):
+        pb_other = make_user("pb_bkp", "Pengarah Bahagian", bahagian=self.bkp)
+        _, s = self.submit_serah()
+
+        resp = self.c(self.pb).get(reverse("pengarah_dashboard"))
+        self.assertContains(resp, f"#{s.id}")
+        self.assertContains(resp, s.namapemohon)
+
+        resp = self.c(pb_other).get(reverse("pengarah_dashboard"))
+        self.assertNotContains(resp, f"#{s.id}")
+
+    def test_pb_cannot_approve_foreign_bahagian(self):
+        pb_other = make_user("pb_bkp", "Pengarah Bahagian", bahagian=self.bkp)
+        _, s = self.submit_serah()
+
+        resp = self.approve(s, pb_other, action="approve")
+        self.assertEqual(resp.status_code, 403)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Borang Telah Dihantar")
+
+        self.approve(s, self.pb, action="approve")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Disokong Oleh Pengarah Bahagian")
+
+    def test_pb_without_bitg_bahagian_cannot_do_bitg_approval(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Disokong Oleh Pengarah Bahagian")
+
+        resp = self.approve(s, self.pb, action="approve")
+        self.assertEqual(resp.status_code, 403)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Disokong Oleh Pengarah Bahagian")
+
+        self.approve(s, self.bitg, action="approve", ulasan="OK")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Mendapat Kelulusan Pengarah BITG")
+
+    def test_bitg_pb_dashboard_shows_both_queues(self):
+        pemohon_bitg = make_user("pemohon_bitg", "Staff", bahagian=self.bitg_b)
+        r = self.c(pemohon_bitg).post(
+            reverse("borang_serahan"), self.serah_payload()
+        )
+        s = SerahanRequest.objects.latest("id")
+        self.assertEqual(s.bahagian, self.bitg_b)
+
+        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
+        self.assertContains(resp, f"#{s.id}")
+
+        _, s2 = self.submit_serah()
+        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
+        self.assertNotContains(resp, f"#{s2.id}")
+
+        self.approve(s2, self.pb, action="approve")
+        s2.refresh_from_db()
+        self.assertEqual(s2.status, "Disokong Oleh Pengarah Bahagian")
+
+        resp = self.c(self.bitg).get(reverse("pengarah_dashboard"))
+        self.assertContains(resp, f"#{s2.id}")
+
+    def test_bitg_pb_can_approve_all_departments(self):
+        pb_bkp = make_user("pb_bkp2", "Pengarah Bahagian", bahagian=self.bkp)
+        pemohon_bkp = make_user("pemohon_bkp", "Staff", bahagian=self.bkp)
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+
+        self.c(pemohon_bkp).post(reverse("borang_serahan"), self.serah_payload())
+        s2 = SerahanRequest.objects.latest("id")
+        self.assertEqual(s2.bahagian, self.bkp)
+
+        self.approve(s2, pb_bkp, action="approve")
+        s2.refresh_from_db()
+        self.assertEqual(s2.status, "Disokong Oleh Pengarah Bahagian")
+
+        self.approve(s2, self.bitg, action="approve", ulasan="OK")
+        s2.refresh_from_db()
+        self.assertEqual(s2.status, "Mendapat Kelulusan Pengarah BITG")

@@ -30,6 +30,8 @@ urlpatterns = [
 
     path('borang-serahan/', views.borang_serahan, name='borang_serahan'),
 
+    path('borang-serahan/<int:request_id>/edit/', views.borang_serahan_edit, name='borang_serahan_edit'),
+
     path('borang-pinjaman/', views.borang_pinjaman, name='borang_pinjaman'),
 
     path('status/', views.status_view, name='status'),
@@ -44,8 +46,6 @@ urlpatterns = [
 
     # KEEP ONLY THIS ONE
     path("status-update/<str:borang_type>/<int:request_id>/", views.status_update, name="status_update"),
-
-    path('upload-data/<str:borang_type>/<int:request_id>/', views.upload_data, name='upload_data'),
 
     path("update-status/<str:borang_type>/<int:request_id>/<str:new_status>/", views.update_status, name="update_status"),
     

@@ -45,6 +45,14 @@
 <div class="form-group"><input type="text" name="username" placeholder="Username" required></div>
 <div class="form-group"><input type="email" name="email" placeholder="Email" required></div>
 <div class="form-group"><input type="text" name="telefon" placeholder="No. Telefon"></div>
+<div class="form-group">
+    <select name="bahagian" required>
+        <option value="">-- Pilih Bahagian --</option>
+        {% for b in bahagian_list %}
+        <option value="{{ b.id }}">{{ b.nama }}</option>
+        {% endfor %}
+    </select>
+</div>
 <div class="form-group"><input type="password" name="password" placeholder="Kata Laluan" required></div>
 <div class="form-group"><input type="password" name="confirm" placeholder="Sahkan Kata Laluan" required></div>
 

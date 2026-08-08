@@ -134,6 +134,19 @@
                 </div>
                 {% endif %}
 
+                {% if r.status == "Pembetulan Oleh Pemohon" %}
+                <div class="reject-alert">
+                    <p><b>Permohonan Dikembalikan Untuk Pembetulan.</b></p>
+                    {% if r.status_logs %}
+                    <p>Sebab: {{ r.status_logs.0.sebab_tolak|default:"-" }}</p>
+                    {% endif %}
+                    <p>
+                        Sila kemaskini maklumat dan hantar semula untuk kelulusan semula.
+                        <a href="{% url 'borang_serahan_edit' r.id %}" class="btn-approve">Edit & Hantar Semula</a>
+                    </p>
+                </div>
+                {% endif %}
+
                 {% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" or r.status == "Tidak Mendapat Kelulusan Pengarah BITG" %}
                 <div class="reject-alert">
                     <p><b>Permohonan Tidak Disokong / Tidak Diluluskan.</b></p>

@@ -52,7 +52,7 @@
         </form>
         {% endif %}
 
-        {% if is_pengarah_bitg and req.status == "Disokong Oleh Pengarah Bahagian" %}
+        {% if is_bitg and req.status == "Disokong Oleh Pengarah Bahagian" %}
         <form method="POST" action="{% url 'approve_request' req.borang_type req.id %}">
             {% csrf_token %}
             <textarea name="ulasan" placeholder="Ulasan"></textarea>
@@ -66,7 +66,7 @@
         <a href="{% url 'assign_pic_page' %}" class="btn-assign">Penugasan PIC</a>
         {% endif %}
 
-        {% if is_pengarah_bitg and req.borang_type == "PINJAMAN" and req.status == "Mendapat Kelulusan Pengarah BITG" %}
+        {% if is_bitg and req.borang_type == "PINJAMAN" and req.status == "Mendapat Kelulusan Pengarah BITG" %}
         <a href="{% url 'assign_pic_page' %}" class="btn-assign">Penugasan PIC</a>
         {% endif %}
 

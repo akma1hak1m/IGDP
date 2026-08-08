@@ -114,7 +114,7 @@
 
         {% for group in request.user.groups.all %}
 
-            {% if group.name == "Pengarah Bahagian" and r.status == "Borang Telah Dihantar" %}
+            {% if group.name == "Pengarah Bahagian" and r.status == "Borang Telah Dihantar" and request.user.profile.bahagian == r.bahagian %}
             <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
                 {% csrf_token %}
                 <textarea name="sebab_tolak" placeholder="Sebab tidak disokong (jika perlu)"></textarea>
@@ -123,7 +123,7 @@
             </form>
             {% endif %}
 
-            {% if group.name == "Pengarah BITG" and r.status == "Disokong Oleh Pengarah Bahagian" %}
+            {% if group.name == "Pengarah Bahagian" and request.user.profile.bahagian.nama == "BITG" and r.status == "Disokong Oleh Pengarah Bahagian" %}
             <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
                 {% csrf_token %}
                 <textarea name="ulasan" placeholder="Ulasan"></textarea>
@@ -142,7 +142,7 @@
             </form>
             {% endif %}
 
-            {% if group.name == "PIC" and r.borang_type == "SERAHAN" and r.status == "Verifikasi Data Oleh PIC" or group.name == "PIC" and r.borang_type == "SERAHAN" and r.status == "Pembetulan Data" %}
+            {% if group.name == "PIC" and r.borang_type == "SERAHAN" and r.status == "Verifikasi Data Oleh PIC" %}
             <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
                 {% csrf_token %}
                 <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>

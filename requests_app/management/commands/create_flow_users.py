@@ -1,12 +1,12 @@
 import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User, Group
-from requests_app.models import UserProfile
+from requests_app.models import UserProfile, Bahagian
 
 ROLES = {
     "pemohon": ["Staff"],
     "pengarah_bahagian": ["Pengarah Bahagian"],
-    "pengarah_bitg": ["Pengarah BITG"],
+    "pengarah_bitg": ["Pengarah Bahagian"],
     "pengurus_pangkalan": ["Pengurus Pengkalan Data"],
     "pic": ["PIC"],
 }
@@ -26,9 +26,18 @@ class Command(BaseCommand):
             default=None,
             help="Password for all created users (default: env FLOW_USER_PASSWORD or placeholder).",
         )
+        parser.add_argument(
+            "--bahagian",
+            default="BS",
+            help="Bahagian assigned to pemohon and pengarah_bahagian (default: BS).",
+        )
 
     def handle(self, *args, **opts):
         password = opts["password"] or DEFAULT_PASSWORD
+        bahagian = Bahagian.objects.filter(nama=opts["bahagian"]).first()
+        if not bahagian:
+            self.stderr.write(self.style.ERROR(f"Bahagian '{opts['bahagian']}' tidak wujud."))
+            return
         rows = []
         for username, groups in ROLES.items():
             user, created = User.objects.get_or_create(
@@ -37,7 +46,14 @@ class Command(BaseCommand):
             )
             user.set_password(password)
             user.save()
-            UserProfile.objects.get_or_create(user=user)
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            if username in ("pemohon", "pengarah_bahagian"):
+                profile.bahagian = bahagian
+                profile.save()
+            if username == "pengarah_bitg":
+                bitg = Bahagian.objects.filter(nama="BITG").first()
+                profile.bahagian = bitg
+                profile.save()
             for group_name in groups:
                 group, _ = Group.objects.get_or_create(name=group_name)
                 user.groups.add(group)

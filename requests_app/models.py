@@ -101,13 +101,30 @@ class LoginLog(models.Model):
         return f"{self.user.username} - {self.login_time}"
 
 
+class Bahagian(models.Model):
+    nama = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.nama
+
+    class Meta:
+        verbose_name_plural = "Bahagian"
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     phone = models.CharField(max_length=100, blank=True, null=True)
+    bahagian = models.ForeignKey(
+        Bahagian,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="profiles",
+    )
 
     def __str__(self):
         return f"{self.user.username} - {self.phone or ''}"
-    
+
 
 class Negeri(models.Model):
     nama = models.CharField(max_length=100)
@@ -153,6 +170,14 @@ class AbstractRequest(models.Model):
 
     uploaded_file = models.FileField(upload_to="uploaded_data/", null=True, blank=True)
 
+    bahagian = models.ForeignKey(
+        Bahagian,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="%(class)s_requests",
+    )
+
     pic = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -180,7 +205,7 @@ class SerahanRequest(AbstractRequest):
         ("Mendapat Kelulusan Pengarah BITG", "Mendapat Kelulusan Pengarah BITG"),
         ("Semakan Dan Penugasan Oleh Pengurus Pengkalan Data", "Semakan Dan Penugasan Oleh Pengurus Pengkalan Data"),
         ("Verifikasi Data Oleh PIC", "Verifikasi Data Oleh PIC"),
-        ("Pembetulan Data", "Pembetulan Data"),
+        ("Pembetulan Oleh Pemohon", "Pembetulan Oleh Pemohon"),
         ("Pengesahan Verifikasi", "Pengesahan Verifikasi"),
         ("Serahan Data", "Serahan Data"),
         ("Selesai", "Selesai"),

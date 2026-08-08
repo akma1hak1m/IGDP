@@ -19,6 +19,7 @@ from .models import (
     Negeri,
     Daerah,
     Mukim,
+    Bahagian,
     SerahanRequest,
     PinjamanRequest,
     StatusLog,
@@ -33,7 +34,7 @@ SERAHAN_STEPS = [
     "Mendapat Kelulusan Pengarah BITG",
     "Semakan Dan Penugasan Oleh Pengurus Pengkalan Data",
     "Verifikasi Data Oleh PIC",
-    "Pembetulan Data",
+    "Pembetulan Oleh Pemohon",
     "Pengesahan Verifikasi",
     "Serahan Data",
     "Selesai",
@@ -72,8 +73,12 @@ def is_pengarah_bahagian(user):
     return has_group(user, "Pengarah Bahagian")
 
 
-def is_pengarah_bitg(user):
-    return has_group(user, "Pengarah BITG")
+def is_bitg(user):
+    """Pengarah Bahagian whose department is BITG — acts as the BITG-level approver."""
+    if not has_group(user, "Pengarah Bahagian"):
+        return False
+    b = user_bahagian(user)
+    return b is not None and b.nama == "BITG"
 
 
 def is_pengurus(user):
@@ -93,7 +98,7 @@ def is_reviewer(user):
         is_admin(user)
         or is_pic(user)
         or is_pengarah_bahagian(user)
-        or is_pengarah_bitg(user)
+        or is_bitg(user)
         or is_pengurus(user)
     )
 
@@ -165,6 +170,25 @@ def group_emails(group_name):
     return [u.email for u in users if u.email]
 
 
+def bahagian_pb_emails(bahagian):
+    """Emails of Pengarah Bahagian users assigned to the given department."""
+    if not bahagian:
+        return []
+    users = User.objects.filter(groups__name="Pengarah Bahagian", profile__bahagian=bahagian)
+    return [u.email for u in users if u.email]
+
+
+def bitg_emails():
+    """Emails of Pengarah Bahagian users whose department is BITG."""
+    users = User.objects.filter(groups__name="Pengarah Bahagian", profile__bahagian__nama="BITG")
+    return [u.email for u in users if u.email]
+
+
+def user_bahagian(user):
+    profile = getattr(user, "profile", None)
+    return profile.bahagian if profile else None
+
+
 def applicant_info(user):
     """Applicant details always come from the logged-in account."""
     name = (user.get_full_name() or "").strip() or user.username
@@ -209,59 +233,101 @@ def home(request):
 # BORANG SERAHAN
 # =============================
 
+def serah_form_data(request):
+    """Parse submitted serahan form fields into a dict for create/update."""
+    komponen = request.POST.getlist("komponen_data")
+    komponen_lain = request.POST.get("komponen_lain")
+    jenis = request.POST.getlist("jenis_data")
+    jenis_lain = request.POST.get("jenis_lain")
+    format_data = request.POST.getlist("format_data")
+    format_lain = request.POST.get("format_lain")
+    unjuran = request.POST.getlist("unjuranKoordinat_data")
+    unjuranKoordinat_lain = request.POST.get("unjuranKoordinat_lain")
+    sumber = request.POST.getlist("sumber_data")
+    sumber_lain = request.POST.get("sumber_lain")
+    metadata = request.POST.get("meta_data")
+    metadata_lain = request.POST.get("meta_lain")
+    jenisdataformat = request.POST.getlist("jenisdataformat")
+    klasifikasidata = request.POST.getlist("klasifikasidata")
+
+    daerah = request.POST.get("daerah")
+    daerah_text = None
+    if daerah == "LAIN":
+        daerah_text = request.POST.get("daerah_lain")
+        daerah = None
+    mukim = request.POST.get("mukim")
+    mukim_text = None
+    if mukim == "LAIN":
+        mukim_text = request.POST.get("mukim_lain")
+        mukim = None
+
+    return {
+        "komponen_data": ", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
+        "negeri": Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
+        "daerah": Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
+        "mukim": Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
+        "daerah_text": daerah_text,
+        "mukim_text": mukim_text,
+        "indeks": request.POST.get("indeks"),
+        "jenis_data": ", ".join(jenis) + ("  " + jenis_lain if jenis_lain else ""),
+        "format_data": ", ".join(format_data) + ("  " + format_lain if format_lain else ""),
+        "unjuranKoordinat_data": ", ".join(unjuran) + ("  " + unjuranKoordinat_lain if unjuranKoordinat_lain else ""),
+        "sumber_data": ", ".join(sumber) + ("  " + sumber_lain if sumber_lain else ""),
+        "meta_data": (metadata or "") + ("  " + metadata_lain if metadata_lain else ""),
+        "namaagensi": request.POST.get("namaagensi"),
+        "namaprojek": request.POST.get("namaprojek"),
+        "tarikhprojek": request.POST.get("tarikhprojek"),
+        "jenisdataformat": ", ".join(jenisdataformat),
+        "klasifikasidata": ", ".join(klasifikasidata),
+        "uploaded_file": request.FILES.get("file"),
+    }
+
+
+def split_lain(field):
+    """Recover the 'lain-lain' free text stored after a double space."""
+    if field and "  " in field:
+        return field.split("  ", 1)[1]
+    return ""
+
+
+def selected_values(field):
+    """Checkbox values stored as comma-joined string, with optional lain part."""
+    if not field:
+        return []
+    main, _, _ = field.partition("  ")
+    return [v.strip() for v in main.split(",") if v.strip()]
+
+
+def serah_prefill(obj):
+    """Selected checkbox values + lain text for edit mode prefill."""
+    return {
+        "komponen_data": selected_values(obj.komponen_data),
+        "komponen_lain": split_lain(obj.komponen_data),
+        "jenis_data": selected_values(obj.jenis_data),
+        "jenis_lain": split_lain(obj.jenis_data),
+        "format_data": selected_values(obj.format_data),
+        "format_lain": split_lain(obj.format_data),
+        "unjuranKoordinat_data": selected_values(obj.unjuranKoordinat_data),
+        "unjuranKoordinat_lain": split_lain(obj.unjuranKoordinat_data),
+        "sumber_data": selected_values(obj.sumber_data),
+        "sumber_lain": split_lain(obj.sumber_data),
+        "meta_data": selected_values(obj.meta_data),
+        "meta_lain": split_lain(obj.meta_data),
+        "jenisdataformat": selected_values(obj.jenisdataformat),
+        "klasifikasidata": selected_values(obj.klasifikasidata),
+    }
+
+
 @login_required
 def borang_serahan(request):
     if request.method == "POST":
-        komponen = request.POST.getlist("komponen_data")
-        komponen_lain = request.POST.get("komponen_lain")
-        jenis = request.POST.getlist("jenis_data")
-        jenis_lain = request.POST.get("jenis_lain")
-        format_data = request.POST.getlist("format_data")
-        format_lain = request.POST.get("format_lain")
-        unjuran = request.POST.getlist("unjuranKoordinat_data")
-        unjuranKoordinat_lain = request.POST.get("unjuranKoordinat_lain")
-        sumber = request.POST.getlist("sumber_data")
-        sumber_lain = request.POST.get("sumber_lain")
-        metadata = request.POST.get("meta_data")
-        metadata_lain = request.POST.get("meta_lain")
-        jenisdataformat = request.POST.getlist("jenisdataformat")
-        klasifikasidata = request.POST.getlist("klasifikasidata")
-        uploaded_file = request.FILES.get("file")
-
-        daerah = request.POST.get("daerah")
-        daerah_text = None
-        if daerah == "LAIN":
-            daerah_text = request.POST.get("daerah_lain")
-            daerah = None
-        mukim = request.POST.get("mukim")
-        mukim_text = None
-        if mukim == "LAIN":
-            mukim_text = request.POST.get("mukim_lain")
-            mukim = None
-
         obj = SerahanRequest.objects.create(
             pemohon=request.user,
             namapemohon=applicant_info(request.user)[0],
             email=applicant_info(request.user)[1],
-            telefon=applicant_info(request.user)[2],
-            komponen_data=", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
-            negeri=Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
-            daerah=Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
-            mukim=Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
-            daerah_text=daerah_text,
-            mukim_text=mukim_text,
-            indeks=request.POST.get("indeks"),
-            jenis_data=", ".join(jenis) + ("  " + jenis_lain if jenis_lain else ""),
-            format_data=", ".join(format_data) + ("  " + format_lain if format_lain else ""),
-            unjuranKoordinat_data=", ".join(unjuran) + ("  " + unjuranKoordinat_lain if unjuranKoordinat_lain else ""),
-            sumber_data=", ".join(sumber) + ("  " + sumber_lain if sumber_lain else ""),
-            meta_data=(metadata or "") + ("  " + metadata_lain if metadata_lain else ""),
-            namaagensi=request.POST.get("namaagensi"),
-            namaprojek=request.POST.get("namaprojek"),
-            tarikhprojek=request.POST.get("tarikhprojek"),
-            jenisdataformat=", ".join(jenisdataformat),
-            klasifikasidata=", ".join(klasifikasidata),
-            uploaded_file=uploaded_file,
+            telefon=request.POST.get("telefon") or applicant_info(request.user)[2],
+            bahagian=user_bahagian(request.user),
+            **serah_form_data(request),
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
         send_notif(
@@ -271,8 +337,8 @@ def borang_serahan(request):
         )
         send_notif(
             "Permohonan Baru Memerlukan Kelulusan",
-            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nSila login sistem untuk kelulusan.",
-            group_emails("Pengarah Bahagian"),
+            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
+            bahagian_pb_emails(obj.bahagian),
         )
         return redirect("status")
 
@@ -283,6 +349,47 @@ def borang_serahan(request):
         "applicant_name": applicant_name,
         "applicant_email": applicant_email,
         "applicant_phone": applicant_phone,
+    })
+
+
+@login_required
+def borang_serahan_edit(request, request_id):
+    obj = SerahanRequest.objects.filter(id=request_id).first()
+    if not obj or obj.pemohon_id != request.user.id or obj.status != "Pembetulan Oleh Pemohon":
+        return redirect("status")
+
+    if request.method == "POST":
+        data = serah_form_data(request)
+        data.pop("uploaded_file")
+        data["telefon"] = request.POST.get("telefon") or obj.telefon
+        for field, value in data.items():
+            setattr(obj, field, value)
+        obj.bahagian = user_bahagian(request.user) or obj.bahagian
+        obj.pic = None
+        obj.save()
+        log_status(obj, "Borang Telah Dihantar", request.user)
+        send_notif(
+            "Permohonan Serahan Dihantar Semula",
+            f"Hi {obj.namapemohon}, permohonan anda telah dikemaskini dan dihantar semula. ID: {obj.id}",
+            [obj.email],
+        )
+        send_notif(
+            "Permohonan Semula Memerlukan Kelulusan",
+            f"Permohonan telah dikemaskini dan dihantar semula.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
+            bahagian_pb_emails(obj.bahagian),
+        )
+        return redirect("status")
+
+    applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
+
+    return render(request, "borang_serahan.html", {
+        "negeri_list": Negeri.objects.all(),
+        "applicant_name": applicant_name,
+        "applicant_email": applicant_email,
+        "applicant_phone": applicant_phone,
+        "editing": True,
+        "obj": obj,
+        "prefill": serah_prefill(obj),
     })
 
 
@@ -313,6 +420,7 @@ def borang_pinjaman(request):
             namapemohon=applicant_info(request.user)[0],
             email=applicant_info(request.user)[1],
             telefon=applicant_info(request.user)[2],
+            bahagian=user_bahagian(request.user),
             komponen_data=", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
             negeri=Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
             daerah=Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
@@ -335,8 +443,8 @@ def borang_pinjaman(request):
         )
         send_notif(
             "Permohonan Baru Memerlukan Kelulusan",
-            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nSila login sistem untuk kelulusan.",
-            group_emails("Pengarah Bahagian"),
+            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
+            bahagian_pb_emails(obj.bahagian),
         )
         return redirect("status")
 
@@ -405,13 +513,14 @@ def pengarah_dashboard(request):
     qs = []
 
     if is_pengarah_bahagian(user):
-        qs = list(SerahanRequest.objects.filter(status="Borang Telah Dihantar")) + list(PinjamanRequest.objects.filter(status="Borang Telah Dihantar"))
-    elif is_pengarah_bitg(user):
-        qs = list(SerahanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")) + list(PinjamanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian"))
+        b = user_bahagian(user)
+        qs = list(SerahanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)) + list(PinjamanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b))
+        if is_bitg(user):
+            qs += list(SerahanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")) + list(PinjamanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian"))
     elif is_pengurus(user):
         qs = list(SerahanRequest.objects.filter(status__in=["Mendapat Kelulusan Pengarah BITG", "Pengesahan Verifikasi"]))
     elif is_pic(user):
-        qs = list(SerahanRequest.objects.filter(pic=user, status__in=["Verifikasi Data Oleh PIC", "Pembetulan Data"])) + list(PinjamanRequest.objects.filter(pic=user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"]))
+        qs = list(SerahanRequest.objects.filter(pic=user, status="Verifikasi Data Oleh PIC")) + list(PinjamanRequest.objects.filter(pic=user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"]))
     else:
         return redirect("home")
 
@@ -422,7 +531,7 @@ def pengarah_dashboard(request):
     return render(request, "pengarah_dashboard.html", {
         "requests": qs,
         "is_pengarah_bahagian": is_pengarah_bahagian(user),
-        "is_pengarah_bitg": is_pengarah_bitg(user),
+        "is_bitg": is_bitg(user),
         "is_pengurus": is_pengurus(user),
         "is_pic": is_pic(user),
         "users": User.objects.filter(groups__name="PIC"),
@@ -447,18 +556,20 @@ def approve_request(request, borang_type, request_id):
     sebab = request.POST.get("sebab_tolak")
     ulasan = request.POST.get("ulasan")
 
-    # Pengarah Bahagian
+    # Pengarah Bahagian (mesti bahagian sama dengan pemohon)
     if is_pengarah_bahagian(user) and data.status == "Borang Telah Dihantar":
+        if user_bahagian(user) != data.bahagian:
+            return HttpResponseForbidden("Bukan bahagian anda")
         if action == "reject":
             log_status(data, "Tidak Disokong Oleh Pengarah Bahagian", user, sebab_tolak=sebab or "-")
             send_notif("Permohonan Tidak Disokong", f"Permohonan ID {data.id} tidak disokong.\nSebab: {sebab}", [data.email])
         else:
             log_status(data, "Disokong Oleh Pengarah Bahagian", user)
             send_notif("Permohonan Diluluskan (Bahagian)", f"Permohonan ID {data.id} telah disokong oleh Pengarah Bahagian.", [data.email])
-            send_notif("Permohonan Memerlukan Kelulusan BITG", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk kelulusan.", group_emails("Pengarah BITG"))
+            send_notif("Permohonan Memerlukan Kelulusan BITG", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk kelulusan.", bitg_emails())
 
-    # Pengarah BITG
-    elif is_pengarah_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
+    # BITG-level approval (Pengarah Bahagian dengan bahagian BITG)
+    elif is_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
         if action == "reject":
             log_status(data, "Tidak Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan, sebab_tolak=sebab or "-")
             send_notif("Permohonan Tidak Diluluskan (BITG)", f"Permohonan ID {data.id} tidak diluluskan oleh Pengarah BITG.\nSebab: {sebab}", [data.email])
@@ -468,7 +579,7 @@ def approve_request(request, borang_type, request_id):
             if data.borang_type == "SERAHAN":
                 send_notif("Permohonan Memerlukan Semakan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk semakan & penugasan.", group_emails("Pengurus Pengkalan Data"))
             else:
-                send_notif("Permohonan Memerlukan Penugasan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", group_emails("Pengarah BITG"))
+                send_notif("Permohonan Memerlukan Penugasan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", bitg_emails())
     else:
         return HttpResponseForbidden("Not allowed")
 
@@ -499,8 +610,8 @@ def assign_pic(request, borang_type, request_id):
             data.pic = pic_user
             data.save()
             log_status(data, "Verifikasi Data Oleh PIC", user)
-        # PINJAMAN: Pengarah BITG assigns
-        elif data.borang_type == "PINJAMAN" and is_pengarah_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
+        # PINJAMAN: BITG-level Pengarah assigns
+        elif data.borang_type == "PINJAMAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
             data.pic = pic_user
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
@@ -520,7 +631,7 @@ def assign_pic_page(request):
     user = request.user
     if is_pengurus(user):
         borang_list = SerahanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG")
-    elif is_pengarah_bitg(user):
+    elif is_bitg(user):
         borang_list = PinjamanRequest.objects.filter(status="Mendapat Kelulusan Pengarah BITG")
     else:
         return redirect("home")
@@ -551,11 +662,16 @@ def verify_data(request, borang_type, request_id):
     action = request.POST.get("action")
     sebab = request.POST.get("sebab_tolak")
 
-    # SERAHAN: PIC verifikasi / pembetulan
-    if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status in ["Verifikasi Data Oleh PIC", "Pembetulan Data"]:
+    # SERAHAN: PIC verifikasi / pembetulan (kembali kepada pemohon)
+    if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Verifikasi Data Oleh PIC":
         if action == "reject":
-            log_status(data, "Pembetulan Data", user, sebab_tolak=sebab or "-")
-            send_notif("Pembetulan Diperlukan", f"Data permohonan ID {data.id} perlu pembetulan.\nSebab: {sebab}", group_emails("Pengurus Pengkalan Data"))
+            log_status(data, "Pembetulan Oleh Pemohon", user, sebab_tolak=sebab or "-")
+            send_notif(
+                "Pembetulan Diperlukan",
+                f"Data permohonan ID {data.id} perlu pembetulan.\nSebab: {sebab}\nSila login untuk mengedit dan menghantar semula.",
+                [data.email],
+            )
+            send_notif("Pembetulan Diperlukan", f"Permohonan ID {data.id} dikembalikan kepada pemohon untuk pembetulan.\nSebab: {sebab}", group_emails("Pengurus Pengkalan Data"))
         else:
             log_status(data, "Pengesahan Verifikasi", user)
             send_notif("Verifikasi Data Selesai", f"Verifikasi permohonan ID {data.id} selesai.", group_emails("Pengurus Pengkalan Data"))
@@ -592,44 +708,11 @@ def verify_data(request, borang_type, request_id):
 # =============================
 
 @login_required
-def upload_data(request, borang_type, request_id):
-    data = get_request_obj(borang_type, request_id)
-    if not data:
-        return HttpResponseForbidden("Not found")
-
-    user = request.user
-    if request.method == "POST":
-        if not is_pic(user) or data.pic_id != user.id:
-            return HttpResponseForbidden("Not assigned")
-
-        uploaded_file = request.FILES.get("data_file") or request.FILES.get("file")
-        if not uploaded_file:
-            return redirect("upload_page")
-
-        if data.borang_type == "PINJAMAN":
-            if data.status not in ["Penyediaan Data", "Pembetulan Oleh Pemohon"]:
-                return HttpResponseForbidden("Invalid stage")
-            data.uploaded_file = uploaded_file
-            data.save()
-            log_status(data, "Serahan Data", user)
-            send_notif("Data Sedia Untuk Semakan", f"Data permohonan ID {data.id} telah disediakan. Sila semak.", [data.email])
-        else:
-            if data.status not in ["Verifikasi Data Oleh PIC", "Pembetulan Data"]:
-                return HttpResponseForbidden("Invalid stage")
-            data.uploaded_file = uploaded_file
-            data.save()
-
-        return redirect("upload_page")
-
-    return HttpResponseForbidden("POST only")
-
-
-@login_required
 def upload_page(request):
     if not is_pic(request.user):
         return redirect("home")
     tasks = (
-        list(SerahanRequest.objects.filter(pic=request.user, status__in=["Verifikasi Data Oleh PIC", "Pembetulan Data"]))
+        list(SerahanRequest.objects.filter(pic=request.user, status="Verifikasi Data Oleh PIC"))
         + list(PinjamanRequest.objects.filter(pic=request.user, status__in=["Penyediaan Data", "Pembetulan Oleh Pemohon"]))
     )
     tasks.sort(key=lambda o: o.created_at, reverse=True)
@@ -819,10 +902,18 @@ def register_page(request):
             messages.error(request, "Email telah digunakan.")
             return redirect("register")
 
+        bahagian = Bahagian.objects.filter(id=request.POST.get("bahagian")).first()
+        if not bahagian:
+            messages.error(request, "Sila pilih bahagian.")
+            return redirect("register")
+
         user = User.objects.create_user(username=username, email=email, password=password, first_name=fullname)
         UserProfile.objects.update_or_create(
             user=user,
-            defaults={"phone": request.POST.get("telefon", "").strip()},
+            defaults={
+                "phone": request.POST.get("telefon", "").strip(),
+                "bahagian": bahagian,
+            },
         )
         staff_group, created = Group.objects.get_or_create(name="Staff")
         user.groups.add(staff_group)
@@ -830,7 +921,7 @@ def register_page(request):
         messages.success(request, "Pendaftaran berjaya! Akaun anda telah didaftarkan.")
         return redirect("login")
 
-    return render(request, "register.html")
+    return render(request, "register.html", {"bahagian_list": Bahagian.objects.all()})
 
 
 # =============================

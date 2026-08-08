@@ -37,12 +37,6 @@
         <a href="{{ r.uploaded_file.url }}" target="_blank" class="btn-assign">Muat Turun Data</a>
         {% endif %}
 
-        <form method="POST" enctype="multipart/form-data" action="{% url 'upload_data' r.borang_type r.id %}">
-            {% csrf_token %}
-            <input type="file" name="data_file" required>
-            <button type="submit" class="btn-approve">Muat Naik Data</button>
-        </form>
-
         {% if r.borang_type == "SERAHAN" %}
         <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
             {% csrf_token %}
