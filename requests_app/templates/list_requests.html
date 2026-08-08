@@ -66,18 +66,15 @@
 .req-table tbody tr { cursor:pointer; transition:background .15s; }
 .req-table tbody tr:hover { background:rgba(255,255,255,.06); }
 .req-table .row-id { color:#8ab4f8; font-weight:600; }
-.badge-type { padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#1a73e8; color:#fff; }
-.badge-pinjaman { padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#b26a00; color:#fff; }
-.badge-overdue { padding:2px 6px; border-radius:6px; font-size:10px; font-weight:700; background:#c62828; color:#fff; margin-left:6px; }
-.pager { display:flex; align-items:center; gap:6px; margin-top:16px; flex-wrap:wrap; }
+.pager { display:flex; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap; }
 .pager button { padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:transparent; color:#e3f2fd; cursor:pointer; }
 .pager button:hover { background:rgba(255,255,255,.1); }
 .pager button.active { background:#1a73e8; border-color:#1a73e8; }
 .pager button:disabled { opacity:.4; cursor:default; }
 .pager .pager-total { margin-left:auto; color:#90a4ae; font-size:13px; }
-.filter-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
-.filter-row select { padding:8px 10px; border-radius:8px; background:#0f2233; color:#e3f2fd; border:1px solid rgba(255,255,255,.15); }
-.filter-type { display:flex; gap:10px; color:#e3f2fd; font-size:14px; }
+.filter-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:14px; }
+.filter-row select { padding:8px 12px; min-width:150px; border-radius:8px; background:#0f2233; color:#e3f2fd; border:1px solid rgba(255,255,255,.15); }
+.filter-type { display:flex; gap:12px; color:#e3f2fd; font-size:14px; }
 .search-input { flex:1; min-width:180px; }
 
 .detail-overlay { display:none; position:fixed; inset:0; background:rgba(2,12,22,.72); z-index:1000; justify-content:flex-end; }
@@ -88,7 +85,7 @@
 .detail-head .status-badge { margin-left:auto; }
 .detail-actions form { margin-bottom:10px; }
 .detail-actions textarea { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; resize:vertical; }
-.detail-actions .btn-approve, .detail-actions .btn-reject { margin-right:6px; }
+.detail-actions .btn-approve, .detail-actions .btn-reject { margin-right:8px; }
 </style>
 
 <script>
