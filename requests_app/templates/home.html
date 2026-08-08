@@ -39,37 +39,32 @@ MYSA
 
 <div class="divider-line fade-in fade-delay-3"></div>
 
-<div class="flow-section">
+<div class="flow-tabs fade-in fade-delay-4">
 
-<h2 class="flow-title fade-in fade-delay-4">
-CARTA ALIR BAGI PROSES <br>
-SERAHAN DATA
-</h2>
+    <div class="flow-tab-nav">
+        <button type="button" class="flow-tab-btn active" data-tab="serah" onclick="switchFlowTab('serah')">
+            Carta Alir Serahan Data
+        </button>
+        <button type="button" class="flow-tab-btn" data-tab="pinjam" onclick="switchFlowTab('pinjam')">
+            Carta Alir Pinjaman Data
+        </button>
+    </div>
 
-<div class="flow-container">
-<img src="{% static 'images/serah.png' %}" 
-class="flow-image fade-in fade-delay-4"
-onclick="openImage(this.src)">
-</div>
+    <div class="flow-tab-pane active" data-pane="serah">
+        <div class="flow-container">
+            <img src="{% static 'images/serah.png' %}"
+            class="flow-image"
+            onclick="openImage(this.src)">
+        </div>
+    </div>
 
-</div>
-
-
-<div class="divider-line fade-in fade-delay-3"></div>
-
-
-<div class="flow-section">
-
-<h2 class="flow-title fade-in fade-delay-4">
-CARTA ALIR BAGI PROSES <br>
-PINJAMAN DATA
-</h2>
-
-<div class="flow-container">
-<img src="{% static 'images/pinjam.png' %}" 
-class="flow-image fade-in fade-delay-4"
-onclick="openImage(this.src)">
-</div>
+    <div class="flow-tab-pane" data-pane="pinjam">
+        <div class="flow-container">
+            <img src="{% static 'images/pinjam.png' %}"
+            class="flow-image"
+            onclick="openImage(this.src)">
+        </div>
+    </div>
 
 </div>
 
@@ -86,6 +81,15 @@ function openImage(src){
 
 function closeImage(){
     document.getElementById("imgModal").style.display = "none";
+}
+
+function switchFlowTab(name){
+    document.querySelectorAll(".flow-tab-btn").forEach(function(btn){
+        btn.classList.toggle("active", btn.dataset.tab === name);
+    });
+    document.querySelectorAll(".flow-tab-pane").forEach(function(pane){
+        pane.classList.toggle("active", pane.dataset.pane === name);
+    });
 }
 </script>
 
