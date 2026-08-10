@@ -4,9 +4,9 @@ Run with:  manage.py test --settings=dgp_system.test_settings requests_app
 """
 from django.test import TestCase, Client
 from django.contrib.auth.models import User, Group
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from requests_app.models import SerahanRequest, PinjamanRequest, StatusLog, Bahagian, UserProfile
+from requests_app.views import annotate_steps
 
 PASSWORD = "p@ssw0rd"
 
@@ -117,10 +117,10 @@ class FlowTestBase(TestCase):
             reverse("verify_data", args=[obj.borang_type, obj.id]), data
         )
 
-    def upload(self, obj, user, filename="data.txt", content=b"data"):
+    def hantar(self, s, user=None):
+        user = user or self.pemohon
         return self.c(user).post(
-            reverse("upload_data", args=[obj.borang_type, obj.id]),
-            {"data_file": SimpleUploadedFile(filename, content)},
+            reverse("pemohon_hantar_data", args=[s.id]), {"catatan": "emel"}
         )
 
     def log_chain(self, obj):
@@ -146,14 +146,18 @@ class FlowTestBase(TestCase):
 
         self.assign(s, self.bitg, self.pic)
         s.refresh_from_db()
-        self.assertEqual(s.status, "Verifikasi Data Oleh PIC")
+        self.assertEqual(s.status, "Penugasan PIC")
         self.assertEqual(s.pic, self.pic)
+
+        self.hantar(s)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pemohon Hantar Data")
 
         self.verify(s, self.pic, "approve")
         s.refresh_from_db()
-        self.assertEqual(s.status, "Pengesahan Verifikasi")
+        self.assertEqual(s.status, "Verifikasi Data")
 
-        self.verify(s, self.bitg, "approve")
+        self.verify(s, self.pic, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Selesai")
 
@@ -163,9 +167,10 @@ class FlowTestBase(TestCase):
                 "Borang Telah Dihantar",
                 "Disokong Oleh Pengarah Bahagian",
                 "Mendapat Kelulusan Pengarah BITG",
-                "Verifikasi Data Oleh PIC",
-                "Pengesahan Verifikasi",
-                "Serahan Data",
+                "Penugasan PIC",
+                "Pemohon Hantar Data",
+                "Verifikasi Data",
+                "Sahkan Penerimaan Data",
                 "Selesai",
             ],
         )
@@ -190,6 +195,7 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
 
         self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
         s.refresh_from_db()
@@ -214,11 +220,12 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         self.verify(s, self.pic, "approve")
         s.refresh_from_db()
-        self.assertEqual(s.status, "Pengesahan Verifikasi")
+        self.assertEqual(s.status, "Verifikasi Data")
 
-        self.verify(s, self.bitg, "approve")
+        self.verify(s, self.pic, "approve")
         s.refresh_from_db()
         self.assertEqual(s.status, "Selesai")
 
@@ -236,6 +243,7 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         self.verify(s, self.pic, "reject")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
@@ -257,6 +265,7 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         self.verify(s, self.pic, "reject")
         s.refresh_from_db()
         self.assertEqual(s.status, "Pembetulan Oleh Pemohon")
@@ -271,6 +280,7 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         self.verify(s, self.pic, "reject", sebab_tolak="Salah unjuran")
         s.refresh_from_db()
 
@@ -289,6 +299,7 @@ class FlowTestBase(TestCase):
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         mail.outbox.clear()
 
         self.verify(s, self.pic, "reject", sebab_tolak="Data tidak lengkap")
@@ -297,16 +308,43 @@ class FlowTestBase(TestCase):
         tos = [email for m in mail.outbox for email in m.to]
         self.assertIn(self.pemohon.email, tos)
 
-    def test_serah_bitg_reject_back_to_verify(self):
+    def test_serah_pic_accept_only_for_assigned_pic(self):
+        other_pic = make_user("pic2", "PIC")
         _, s = self.submit_serah()
         self.approve(s, self.pb, action="approve")
         self.approve(s, self.bitg, action="approve")
         self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
         self.verify(s, self.pic, "approve")
-
-        self.verify(s, self.bitg, "reject", sebab_tolak="Semak semula")
         s.refresh_from_db()
-        self.assertEqual(s.status, "Verifikasi Data Oleh PIC")
+        self.assertEqual(s.status, "Verifikasi Data")
+
+        resp = self.verify(s, other_pic, "approve")
+        self.assertEqual(resp.status_code, 403)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Verifikasi Data")
+
+        self.verify(s, self.pic, "approve")
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Selesai")
+
+    def test_serah_hantar_data_guard(self):
+        other = make_user("pemohon2", "Staff")
+        _, s = self.submit_serah()
+        resp = self.hantar(s, user=other)
+        self.assertEqual(resp.status_code, 403)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Borang Telah Dihantar")
+
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.bitg, self.pic)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Penugasan PIC")
+
+        self.hantar(s)
+        s.refresh_from_db()
+        self.assertEqual(s.status, "Pemohon Hantar Data")
 
     def test_serah_bitg_reject_uses_correct_status(self):
         _, s = self.submit_serah()
@@ -342,15 +380,15 @@ class FlowTestBase(TestCase):
 
         self.assign(p, self.bitg, self.pic)
         p.refresh_from_db()
-        self.assertEqual(p.status, "Penyediaan Data")
+        self.assertEqual(p.status, "Penugasan PIC")
         self.assertEqual(p.pic, self.pic)
         self.assertIsNotNone(p.deadline)
 
-        self.verify(p, self.pic, "approve")
+        self.verify(p, self.pic, "approve", ulasan="Hantar emel")
         p.refresh_from_db()
-        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+        self.assertEqual(p.status, "PIC Hantar Data")
 
-        self.verify(p, self.pemohon, "approve")
+        self.verify(p, self.pemohon, "approve", ulasan="Data diterima")
         p.refresh_from_db()
         self.assertEqual(p.status, "Selesai")
 
@@ -360,9 +398,10 @@ class FlowTestBase(TestCase):
                 "Borang Telah Dihantar",
                 "Disokong Oleh Pengarah Bahagian",
                 "Mendapat Kelulusan Pengarah BITG",
-                "Penyediaan Data",
-                "Semakan Oleh Pemohon",
-                "Sahkan Penerimaan Data",
+                "Penugasan PIC",
+                "PIC Hantar Data",
+                "Pemohon Semak Data",
+                "Pemohon Sahkan Penerimaan Data",
                 "Selesai",
             ],
         )
@@ -374,20 +413,75 @@ class FlowTestBase(TestCase):
         self.assign(p, self.bitg, self.pic)
         self.verify(p, self.pic, "approve")
         p.refresh_from_db()
-        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+        self.assertEqual(p.status, "PIC Hantar Data")
 
         self.verify(p, self.pemohon, "reject", sebab_tolak="Data tidak tepat")
         p.refresh_from_db()
-        self.assertEqual(p.status, "Penyediaan Data")
+        self.assertEqual(p.status, "Penugasan PIC")
         self.assertNotIn("Pembetulan Oleh Pemohon", self.log_chain(p))
 
         self.verify(p, self.pic, "approve")
         p.refresh_from_db()
-        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+        self.assertEqual(p.status, "PIC Hantar Data")
 
         self.verify(p, self.pemohon, "approve")
         p.refresh_from_db()
         self.assertEqual(p.status, "Selesai")
+
+    def test_pinjam_pb_reject_then_edit_resubmit(self):
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="reject", sebab_tolak="Data tidak lengkap")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Tidak Disokong Oleh Pengarah Bahagian")
+
+        p_id = p.id
+        resp = self.c(self.pemohon).post(
+            reverse("borang_pinjaman_edit", args=[p.id]),
+            self.pinjam_payload(**{"tujuan": "Kajian baru"}),
+        )
+        self.assertEqual(resp.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.id, p_id)
+        self.assertEqual(p.status, "Borang Telah Dihantar")
+        self.assertEqual(p.tujuan, "Kajian baru")
+
+        self.approve(p, self.pb, action="approve")
+        self.approve(p, self.bitg, action="approve")
+        self.assign(p, self.bitg, self.pic)
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Penugasan PIC")
+
+    def test_pinjam_edit_page_renders_with_prefill(self):
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="reject", sebab_tolak="x")
+        resp = self.c(self.pemohon).get(
+            reverse("borang_pinjaman_edit", args=[p.id])
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "HANTAR SEMULA")
+        self.assertContains(resp, 'name="komponen_data" value="Jalan" checked')
+
+    def test_pinjam_timeline_entries(self):
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="approve")
+        self.approve(p, self.bitg, action="approve")
+        self.assign(p, self.bitg, self.pic)
+        self.verify(p, self.pic, "approve", ulasan="Dihantar via emel")
+        self.verify(p, self.pemohon, "approve", ulasan="Semua OK")
+        p.refresh_from_db()
+
+        resp = self.c(self.pemohon).get(
+            reverse("request_detail", args=["PINJAMAN", p.id])
+        )
+        html = resp.content.decode()
+        self.assertIn("Penugasan PIC", html)
+        self.assertIn(f"PIC: {self.pic.username}", html)
+        self.assertIn("PIC Hantar Data", html)
+        self.assertIn("Pemohon Semak Data", html)
+        self.assertIn("Pemohon Sahkan Penerimaan Data", html)
+        self.assertIn("Selesai", html)
+        self.assertIn("Dihantar via emel", html)
+        self.assertIn("Semua OK", html)
 
     def test_pic_confirm_only_for_assigned_pic(self):
         other_pic = make_user("pic2", "PIC")
@@ -399,11 +493,11 @@ class FlowTestBase(TestCase):
         resp = self.verify(p, other_pic, "approve")
         self.assertEqual(resp.status_code, 403)
         p.refresh_from_db()
-        self.assertEqual(p.status, "Penyediaan Data")
+        self.assertEqual(p.status, "Penugasan PIC")
 
         self.verify(p, self.pic, "approve")
         p.refresh_from_db()
-        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+        self.assertEqual(p.status, "PIC Hantar Data")
 
     # ---------- permissions ----------
 
@@ -501,6 +595,78 @@ class FlowTestBase(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "status-timeline")
+
+    def test_status_logs_newest_first(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
+        self.verify(s, self.pic, "approve")
+        self.verify(s, self.pic, "approve")
+        s.refresh_from_db()
+
+        annotate_steps(s)
+        statuses = [log.status for log in s.status_logs]
+        self.assertEqual(statuses[0], "Selesai")
+        self.assertEqual(statuses[-1], "Borang Telah Dihantar")
+        self.assertEqual(statuses, self.log_chain(s)[::-1])
+
+    def test_status_logs_correct_role_per_step(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
+        self.verify(s, self.pic, "approve")
+        self.verify(s, self.pic, "approve")
+        s.refresh_from_db()
+
+        annotate_steps(s)
+        expected = [
+            ("Borang Telah Dihantar", self.pemohon),
+            ("Disokong Oleh Pengarah Bahagian", self.pb),
+            ("Mendapat Kelulusan Pengarah BITG", self.bitg),
+            ("Penugasan PIC", self.bitg),
+            ("Pemohon Hantar Data", self.pemohon),
+            ("Verifikasi Data", self.pic),
+            ("Sahkan Penerimaan Data", self.pic),
+            ("Selesai", self.pic),
+        ]
+        for log, (status, actor) in zip(reversed(s.status_logs), expected):
+            self.assertEqual(log.status, status)
+            self.assertEqual(log.changed_by_id, actor.id)
+
+    def test_timeline_renders_role_label(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        resp = self.c(self.pemohon).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        )
+        html = resp.content.decode()
+        self.assertIn("Pengarah Bahagian", html)
+        self.assertIn("Staff", html)
+
+    def test_timeline_serah_special_labels(self):
+        _, s = self.submit_serah()
+        self.approve(s, self.pb, action="approve")
+        self.approve(s, self.bitg, action="approve")
+        self.assign(s, self.bitg, self.pic)
+        self.hantar(s)
+        self.verify(s, self.pic, "approve")
+        self.verify(s, self.pic, "approve")
+        s.refresh_from_db()
+
+        resp = self.c(self.pemohon).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        )
+        html = resp.content.decode()
+        self.assertIn("(Pengarah BITG)", html)
+        self.assertIn("Penugasan PIC", html)
+        self.assertIn(f"PIC: {self.pic.username}", html)
+        self.assertIn("Pemohon Hantar Data", html)
+        self.assertIn("Verifikasi Data", html)
+        self.assertNotIn("Pengesahan Verifikasi", html)
 
     def test_request_detail_forbidden_for_outsider(self):
         _, s = self.submit_serah()

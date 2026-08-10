@@ -2423,11 +2423,11 @@ margin-top:10px;
 .status-timeline::before{
 	content:'';
 	position:absolute;
-	left:7px;
-	top:6px;
-	bottom:6px;
+	left:10px;
+	top:0;
+	bottom:0;
 	width:2px;
-	background:rgba(255,255,255,0.18);
+	background:rgba(0,229,255,0.55);
 }
 .status-timeline.scrollable{
 max-height:280px;
@@ -2449,7 +2449,8 @@ padding-bottom:0;
 	height:14px;
 	border-radius:50%;
 	background:#1a1a2e;
-	border:2px solid rgba(255,255,255,0.35);
+	border:2px solid rgba(0,229,255,0.6);
+	z-index:1;
 }
 .tl-item.current .tl-marker{
 	background:#00e5ff;

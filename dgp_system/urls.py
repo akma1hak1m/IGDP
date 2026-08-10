@@ -32,6 +32,10 @@ urlpatterns = [
 
     path('borang-serahan/<int:request_id>/edit/', views.borang_serahan_edit, name='borang_serahan_edit'),
 
+    path('borang-pinjaman/<int:request_id>/edit/', views.borang_pinjaman_edit, name='borang_pinjaman_edit'),
+
+    path('hantar-data/<int:request_id>/', views.pemohon_hantar_data, name='pemohon_hantar_data'),
+
     path('borang-pinjaman/', views.borang_pinjaman, name='borang_pinjaman'),
 
     path('status/', views.status_view, name='status'),

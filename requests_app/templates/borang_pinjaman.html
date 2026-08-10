@@ -5,8 +5,16 @@
 
 <h2 class="flow-title">BORANG PINJAMAN DATA</h2>
 
+{% if editing %}
+<div class="reject-alert">
+    <p><b>Mengedit Permohonan #{{ obj.id }}</b></p>
+    <p>Permohonan telah dikembalikan untuk pembetulan. Kemaskini maklumat dan hantar semula untuk kelulusan.</p>
+</div>
+{% endif %}
+
 <form method="POST" enctype="multipart/form-data">
 {% csrf_token %}
+{% if editing %}<input type="hidden" name="edit_id" value="{{ obj.id }}">{% endif %}
 
 <div class="divider-line"></div>
 
@@ -29,7 +37,7 @@
 
 <div class="form-group">
 <label>No. Telefon</label>
-<input type="text" name="telefon" value="{{ applicant_phone }}" placeholder="No. telefon (jika belum lengkap)">
+<input type="text" name="telefon" value="{% if editing %}{{ obj.telefon|default:"" }}{% else %}{{ applicant_phone }}{% endif %}" placeholder="No. telefon (jika belum lengkap)">
 </div>
 
 
@@ -48,96 +56,96 @@
 <div class="data-box">
 <h4>DATA ASAS</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri"> Sempadan Negeri</label>
-<label><input type="checkbox" name="komponen_data" value="Sempadan Daerah"> Sempadan Daerah</label>
-<label><input type="checkbox" name="komponen_data" value="Sempadan Mukim"> Sempadan Mukim</label>
-<label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan"> Nama Bandar / Pekan</label>
-<label><input type="checkbox" name="komponen_data" value="Kontur"> Kontur</label>
-<label><input type="checkbox" name="komponen_data" value="Cerun"> Cerun</label>
-<label><input type="checkbox" name="komponen_data" value="DEM"> DEM</label>
-<label><input type="checkbox" name="komponen_data" value="Titik Ketinggian"> Titik Ketinggian</label>
-<label><input type="checkbox" name="komponen_data" value="Jalan"> Jalan</label>
-<label><input type="checkbox" name="komponen_data" value="Jalan Keretapi"> Jalan Keretapi</label>
-<label><input type="checkbox" name="komponen_data" value="Sungai"> Sungai</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Daerah" {% if editing and "Sempadan Daerah" in prefill.komponen_data %}checked{% endif %}> Sempadan Daerah</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Mukim" {% if editing and "Sempadan Mukim" in prefill.komponen_data %}checked{% endif %}> Sempadan Mukim</label>
+<label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan" {% if editing and "Nama Bandar/Pekan" in prefill.komponen_data %}checked{% endif %}> Nama Bandar / Pekan</label>
+<label><input type="checkbox" name="komponen_data" value="Kontur" {% if editing and "Kontur" in prefill.komponen_data %}checked{% endif %}> Kontur</label>
+<label><input type="checkbox" name="komponen_data" value="Cerun" {% if editing and "Cerun" in prefill.komponen_data %}checked{% endif %}> Cerun</label>
+<label><input type="checkbox" name="komponen_data" value="DEM" {% if editing and "DEM" in prefill.komponen_data %}checked{% endif %}> DEM</label>
+<label><input type="checkbox" name="komponen_data" value="Titik Ketinggian" {% if editing and "Titik Ketinggian" in prefill.komponen_data %}checked{% endif %}> Titik Ketinggian</label>
+<label><input type="checkbox" name="komponen_data" value="Jalan" {% if editing and "Jalan" in prefill.komponen_data %}checked{% endif %}> Jalan</label>
+<label><input type="checkbox" name="komponen_data" value="Jalan Keretapi" {% if editing and "Jalan Keretapi" in prefill.komponen_data %}checked{% endif %}> Jalan Keretapi</label>
+<label><input type="checkbox" name="komponen_data" value="Sungai" {% if editing and "Sungai" in prefill.komponen_data %}checked{% endif %}> Sungai</label>
 
 </div>
 
 <div class="data-box">
 <h4>FASILITI</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Sekolah"> Sekolah</label>
-<label><input type="checkbox" name="komponen_data" value="Hospital"> Hospital</label>
-<label><input type="checkbox" name="komponen_data" value="Klinik/Pusat Perubatan"> Klinik/Pusat Perubatan</label>
-<label><input type="checkbox" name="komponen_data" value="Bangunan Kerajaan"> Bangunan Kerajaan</label>
-<label><input type="checkbox" name="komponen_data" value="Rumah Ibadat"> Rumah Ibadat</label>
-<label><input type="checkbox" name="komponen_data" value="Balai Polis"> Balai Polis</label>
-<label><input type="checkbox" name="komponen_data" value="Balai Bomba"> Balai Bomba</label>
-<label><input type="checkbox" name="komponen_data" value="Stesen KTM"> Stesen KTM</label>
+<label><input type="checkbox" name="komponen_data" value="Sekolah" {% if editing and "Sekolah" in prefill.komponen_data %}checked{% endif %}> Sekolah</label>
+<label><input type="checkbox" name="komponen_data" value="Hospital" {% if editing and "Hospital" in prefill.komponen_data %}checked{% endif %}> Hospital</label>
+<label><input type="checkbox" name="komponen_data" value="Klinik/Pusat Perubatan" {% if editing and "Klinik/Pusat Perubatan" in prefill.komponen_data %}checked{% endif %}> Klinik/Pusat Perubatan</label>
+<label><input type="checkbox" name="komponen_data" value="Bangunan Kerajaan" {% if editing and "Bangunan Kerajaan" in prefill.komponen_data %}checked{% endif %}> Bangunan Kerajaan</label>
+<label><input type="checkbox" name="komponen_data" value="Rumah Ibadat" {% if editing and "Rumah Ibadat" in prefill.komponen_data %}checked{% endif %}> Rumah Ibadat</label>
+<label><input type="checkbox" name="komponen_data" value="Balai Polis" {% if editing and "Balai Polis" in prefill.komponen_data %}checked{% endif %}> Balai Polis</label>
+<label><input type="checkbox" name="komponen_data" value="Balai Bomba" {% if editing and "Balai Bomba" in prefill.komponen_data %}checked{% endif %}> Balai Bomba</label>
+<label><input type="checkbox" name="komponen_data" value="Stesen KTM" {% if editing and "Stesen KTM" in prefill.komponen_data %}checked{% endif %}> Stesen KTM</label>
 
 </div>
 
 <div class="data-box">
 <h4>PERTANIAN</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Guna Tanah"> Guna Tanah</label>
-<label><input type="checkbox" name="komponen_data" value="Jenis Tanih"> Jenis Tanih</label>
-<label><input type="checkbox" name="komponen_data" value="Agroklimatik"> Agroklimatik</label>
-<label><input type="checkbox" name="komponen_data" value="Hujan"> Hujan</label>
-<label><input type="checkbox" name="komponen_data" value="Litupan Tanah"> Litupan Tanah</label>
+<label><input type="checkbox" name="komponen_data" value="Guna Tanah" {% if editing and "Guna Tanah" in prefill.komponen_data %}checked{% endif %}> Guna Tanah</label>
+<label><input type="checkbox" name="komponen_data" value="Jenis Tanih" {% if editing and "Jenis Tanih" in prefill.komponen_data %}checked{% endif %}> Jenis Tanih</label>
+<label><input type="checkbox" name="komponen_data" value="Agroklimatik" {% if editing and "Agroklimatik" in prefill.komponen_data %}checked{% endif %}> Agroklimatik</label>
+<label><input type="checkbox" name="komponen_data" value="Hujan" {% if editing and "Hujan" in prefill.komponen_data %}checked{% endif %}> Hujan</label>
+<label><input type="checkbox" name="komponen_data" value="Litupan Tanah" {% if editing and "Litupan Tanah" in prefill.komponen_data %}checked{% endif %}> Litupan Tanah</label>
 
 </div>
 
 <div class="data-box">
 <h4>PERHUTANAN</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Kompartment"> Kompartment</label>
-<label><input type="checkbox" name="komponen_data" value="Fungsi"> Fungsi</label>
-<label><input type="checkbox" name="komponen_data" value="Sumber"> Sumber</label>
-<label><input type="checkbox" name="komponen_data" value="Lembangan"> Lembangan</label>
-<label><input type="checkbox" name="komponen_data" value="Empangan"> Empangan</label>
+<label><input type="checkbox" name="komponen_data" value="Kompartment" {% if editing and "Kompartment" in prefill.komponen_data %}checked{% endif %}> Kompartment</label>
+<label><input type="checkbox" name="komponen_data" value="Fungsi" {% if editing and "Fungsi" in prefill.komponen_data %}checked{% endif %}> Fungsi</label>
+<label><input type="checkbox" name="komponen_data" value="Sumber" {% if editing and "Sumber" in prefill.komponen_data %}checked{% endif %}> Sumber</label>
+<label><input type="checkbox" name="komponen_data" value="Lembangan" {% if editing and "Lembangan" in prefill.komponen_data %}checked{% endif %}> Lembangan</label>
+<label><input type="checkbox" name="komponen_data" value="Empangan" {% if editing and "Empangan" in prefill.komponen_data %}checked{% endif %}> Empangan</label>
 
 </div>
 
 <div class="data-box">
 <h4>GEOLOGI</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Geomorfologi"> Geomorfologi</label>
-<label><input type="checkbox" name="komponen_data" value="Lithologi"> Lithologi</label>
-<label><input type="checkbox" name="komponen_data" value="Struktur"> Struktur</label>
-<label><input type="checkbox" name="komponen_data" value="Landslide Prone Area"> Landslide Prone Area</label>
+<label><input type="checkbox" name="komponen_data" value="Geomorfologi" {% if editing and "Geomorfologi" in prefill.komponen_data %}checked{% endif %}> Geomorfologi</label>
+<label><input type="checkbox" name="komponen_data" value="Lithologi" {% if editing and "Lithologi" in prefill.komponen_data %}checked{% endif %}> Lithologi</label>
+<label><input type="checkbox" name="komponen_data" value="Struktur" {% if editing and "Struktur" in prefill.komponen_data %}checked{% endif %}> Struktur</label>
+<label><input type="checkbox" name="komponen_data" value="Landslide Prone Area" {% if editing and "Landslide Prone Area" in prefill.komponen_data %}checked{% endif %}> Landslide Prone Area</label>
 
 </div>
 
 <div class="data-box">
 <h4>PESISIR</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Batimetri"> Batimetri</label>
-<label><input type="checkbox" name="komponen_data" value="Geomorfologi_G"> Geomorfologi</label>
-<label><input type="checkbox" name="komponen_data" value="Landform"> Landform</label>
-<label><input type="checkbox" name="komponen_data" value="Pengangkutan"> Pengangkutan</label>
-<label><input type="checkbox" name="komponen_data" value="Tumbuhan"> Tumbuhan</label>
+<label><input type="checkbox" name="komponen_data" value="Batimetri" {% if editing and "Batimetri" in prefill.komponen_data %}checked{% endif %}> Batimetri</label>
+<label><input type="checkbox" name="komponen_data" value="Geomorfologi_G" {% if editing and "Geomorfologi_G" in prefill.komponen_data %}checked{% endif %}> Geomorfologi</label>
+<label><input type="checkbox" name="komponen_data" value="Landform" {% if editing and "Landform" in prefill.komponen_data %}checked{% endif %}> Landform</label>
+<label><input type="checkbox" name="komponen_data" value="Pengangkutan" {% if editing and "Pengangkutan" in prefill.komponen_data %}checked{% endif %}> Pengangkutan</label>
+<label><input type="checkbox" name="komponen_data" value="Tumbuhan" {% if editing and "Tumbuhan" in prefill.komponen_data %}checked{% endif %}> Tumbuhan</label>
 
 </div>
 
 <div class="data-box">
 <h4>BANJIR</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Stesen Hidrologi"> Stesen Hidrologi</label>
-<label><input type="checkbox" name="komponen_data" value="Pusat Pemindahan"> Pusat Pemindahan</label>
-<label><input type="checkbox" name="komponen_data" value="Flood Prone Area"> Flood Prone Area</label>
+<label><input type="checkbox" name="komponen_data" value="Stesen Hidrologi" {% if editing and "Stesen Hidrologi" in prefill.komponen_data %}checked{% endif %}> Stesen Hidrologi</label>
+<label><input type="checkbox" name="komponen_data" value="Pusat Pemindahan" {% if editing and "Pusat Pemindahan" in prefill.komponen_data %}checked{% endif %}> Pusat Pemindahan</label>
+<label><input type="checkbox" name="komponen_data" value="Flood Prone Area" {% if editing and "Flood Prone Area" in prefill.komponen_data %}checked{% endif %}> Flood Prone Area</label>
 
 </div>
 
 <div class="data-box">
 <h4>SOSIO EKONOMI</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Demografi/Penduduk"> Demografi/Penduduk</label>
+<label><input type="checkbox" name="komponen_data" value="Demografi/Penduduk" {% if editing and "Demografi/Penduduk" in prefill.komponen_data %}checked{% endif %}> Demografi/Penduduk</label>
 
 </div>
 
 <div class="data-box">
 <h4>LAIN-LAIN</h4>
-<input type="text" name="komponen_lain" placeholder="Nyatakan jika lain-lain">
+<input type="text" name="komponen_lain" value="{% if editing %}{{ prefill.komponen_lain }}{% endif %}" placeholder="Nyatakan jika lain-lain">
 </div>
 
 </div>
@@ -158,7 +166,7 @@
 <option value="">-- Pilih Negeri --</option>
 
 {% for n in negeri_list %}
-<option value="{{ n.nama }}">{{ n.nama }}</option>
+<option value="{{ n.nama }}" {% if editing and obj.negeri and obj.negeri.nama == n.nama %}selected{% endif %}>{{ n.nama }}</option>
 {% endfor %}
 
 </select>
@@ -174,6 +182,7 @@
 <input type="text"
 id="daerah_lain"
 name="daerah_lain"
+value="{% if editing %}{{ obj.daerah_text|default:"" }}{% endif %}"
 placeholder="Masukkan Daerah"
 style="display:none; margin-top:10px;">
 </div>
@@ -189,6 +198,7 @@ style="display:none; margin-top:10px;">
 <input type="text"
 id="mukim_lain"
 name="mukim_lain"
+value="{% if editing %}{{ obj.mukim_text|default:"" }}{% endif %}"
 placeholder="Masukkan Mukim"
 style="display:none; margin-top:10px;">
 </div>
@@ -197,6 +207,7 @@ style="display:none; margin-top:10px;">
 <label>Indeks Peta Topo</label>
 <input type="text"
 name="indeks"
+value="{% if editing %}{{ obj.indeks|default:"" }}{% endif %}"
 placeholder="Contoh: NB-47-2">
 </div>
 
@@ -210,11 +221,11 @@ placeholder="Contoh: NB-47-2">
 <h3 class="section-title">4. Tujuan Pinjaman / Kegunaan Data / Projek</h3>
 
 <div class="form-group">
-<textarea name="tujuan" rows="5" placeholder="Nyatakan tujuan pinjaman / kegunaan data / projek"></textarea>
+<textarea name="tujuan" rows="5" placeholder="Nyatakan tujuan pinjaman / kegunaan data / projek">{% if editing %}{{ obj.tujuan|default:"" }}{% endif %}</textarea>
 </div>
 
 <div class="form-group">
-<textarea name="cacatan" rows="4" placeholder="Cacatan (optional)"></textarea>
+<textarea name="cacatan" rows="4" placeholder="Cacatan (optional)">{% if editing %}{{ obj.cacatan|default:"" }}{% endif %}</textarea>
 </div>
 
 <div class="divider-line"></div>
@@ -227,13 +238,13 @@ placeholder="Contoh: NB-47-2">
 
 <div class="data-box">
 
-<label><input type="checkbox" name="Setuju" value="Pemohon Setuju"> "Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan peribadi saya.<br>
+<label><input type="checkbox" name="Setuju" value="Pemohon Setuju" {% if editing and prefill.Setuju %}checked{% endif %}> "Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan peribadi saya.<br>
     Tindakan di Bawah Jawatankuasa Disiplin dan Tatatertib Agensi Angkasa Malaysia boleh diambil <br>
     ke atas saya sekiranya saya melanggar syarat di atas."
 </label>
 
-<input type="text" name="nama" placeholder="Nama Penuh">
-<input type="date" name="Tarikh" class="date-input">
+<input type="text" name="nama" value="{% if editing %}{{ obj.nama|default:"" }}{% endif %}" placeholder="Nama Penuh">
+<input type="date" name="Tarikh" value="{% if editing %}{{ obj.Tarikh|default:"" }}{% endif %}" class="date-input">
 
 
 </div>
@@ -243,7 +254,7 @@ placeholder="Contoh: NB-47-2">
 <div class="divider-line"></div>
 
 <div class="form-submit">
-<button type="submit" class="submit-btn">HANTAR</button>
+<button type="submit" class="submit-btn">{% if editing %}HANTAR SEMULA{% else %}HANTAR{% endif %}</button>
 </div>
 
 </form>
@@ -259,6 +270,15 @@ const mukim = document.getElementById("mukim");
 const daerahLain = document.getElementById("daerah_lain");
 const mukimLain = document.getElementById("mukim_lain");
 
+{% if editing %}
+const EDIT_SAVED = {
+    negeri: "{{ obj.negeri.nama|default:"" }}",
+    daerah: "{% if obj.daerah_text %}LAIN{% else %}{{ obj.daerah.nama|default:"" }}{% endif %}",
+    daerahLain: "{{ obj.daerah_text|default:"" }}",
+    mukim: "{% if obj.mukim_text %}LAIN{% else %}{{ obj.mukim.nama|default:"" }}{% endif %}",
+    mukimLain: "{{ obj.mukim_text|default:"" }}",
+};
+{% endif %}
 
 // ===============================
 // LOAD DAERAH WHEN NEGERI CHANGE
@@ -289,6 +309,11 @@ negeri.addEventListener("change", function(){
 
         daerah.innerHTML +=
         `<option value="LAIN">Lain-lain</option>`;
+
+        if (typeof EDIT_SAVED !== "undefined" && EDIT_SAVED.daerah && EDIT_SAVED.daerah !== "LAIN") {
+            daerah.value = EDIT_SAVED.daerah;
+            daerah.dispatchEvent(new Event("change"));
+        }
     });
 
 });
@@ -314,6 +339,7 @@ daerah.addEventListener("change", function(){
 
         // hide dropdown mukim
         mukim.style.display = "none";
+        mukim.required = false;
 
         // show manual mukim input
         mukimLain.style.display = "block";
@@ -325,6 +351,7 @@ daerah.addEventListener("change", function(){
     daerahLain.style.display = "none";
 
     mukim.style.display = "block";
+    mukim.required = true;
     mukimLain.style.display = "none";
     mukimLain.required = false;
 
@@ -346,10 +373,33 @@ daerah.addEventListener("change", function(){
 
         mukim.innerHTML +=
         `<option value="LAIN">Lain-lain</option>`;
+
+        if (typeof EDIT_SAVED !== "undefined" && EDIT_SAVED.mukim && EDIT_SAVED.mukim !== "LAIN") {
+            mukim.value = EDIT_SAVED.mukim;
+        }
     });
 
 });
 
+{% if editing %}
+// ===============================
+// PREFILL SAVED KAWASAN (EDIT MODE)
+// ===============================
+document.addEventListener("DOMContentLoaded", function(){
+    negeri.value = EDIT_SAVED.negeri;
+    negeri.dispatchEvent(new Event("change"));
+
+    if (EDIT_SAVED.daerah === "LAIN") {
+        daerahLain.value = EDIT_SAVED.daerahLain;
+        daerahLain.style.display = "block";
+        mukim.style.display = "none";
+        mukim.required = false;
+        mukimLain.value = EDIT_SAVED.mukimLain;
+        mukimLain.style.display = "block";
+        mukimLain.required = true;
+    }
+});
+{% endif %}
 
 // ===============================
 // MUKIM LAIN-LAIN

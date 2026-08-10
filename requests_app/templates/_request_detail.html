@@ -30,16 +30,14 @@
     </form>
     {% endif %}
 
-    {% if is_bitg and r.borang_type == "SERAHAN" and r.status == "Pengesahan Verifikasi" %}
+    {% if is_pic and r.borang_type == "SERAHAN" and r.pic_id == request.user.id and r.status == "Verifikasi Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
-        <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
-        <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan & Serah</button>
-        <button type="submit" name="action" value="reject" class="btn-reject">✘ Kembali Verifikasi</button>
+        <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan Penerimaan Data</button>
     </form>
     {% endif %}
 
-    {% if is_pic and r.borang_type == "SERAHAN" and r.status == "Verifikasi Data Oleh PIC" %}
+    {% if is_pic and r.borang_type == "SERAHAN" and r.status == "Pemohon Hantar Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
         <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
@@ -48,19 +46,29 @@
     </form>
     {% endif %}
 
-    {% if is_pic and r.borang_type == "PINJAMAN" and r.status == "Penyediaan Data" %}
+    {% if is_pic and r.borang_type == "PINJAMAN" and r.status == "Penugasan PIC" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
+        <textarea name="ulasan" placeholder="Ulasan (cara hantar / nota)"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Data Sedia / Hantar</button>
     </form>
     {% endif %}
 
-    {% if request.user == r.pemohon and r.borang_type == "PINJAMAN" and r.status == "Semakan Oleh Pemohon" %}
+    {% if request.user == r.pemohon and r.borang_type == "SERAHAN" and r.status == "Penugasan PIC" %}
+    <form method="POST" action="{% url 'pemohon_hantar_data' r.id %}">
+        {% csrf_token %}
+        <textarea name="catatan" placeholder="Catatan cara hantar (emel / cetakan)"></textarea>
+        <button type="submit" class="btn-approve">✔ Hantar Data</button>
+    </form>
+    {% endif %}
+
+    {% if request.user == r.pemohon and r.borang_type == "PINJAMAN" and r.status == "PIC Hantar Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
-        <textarea name="sebab_tolak" placeholder="Sebab (jika tidak tepat)"></textarea>
-        <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan Penerimaan</button>
-        <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Tepat</button>
+        <textarea name="ulasan" placeholder="Ulasan (semakan data)"></textarea>
+        <textarea name="sebab_tolak" placeholder="Sebab (jika tidak terima)"></textarea>
+        <button type="submit" name="action" value="approve" class="btn-approve">✔ Terima & Sahkan</button>
+        <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Terima</button>
     </form>
     {% endif %}
 
@@ -113,24 +121,16 @@
 {% if r.status_logs %}
 <div class="details-box">
     <p><b>Sejarah Status:</b></p>
-    {% include "timeline.html" with logs=r.status_logs %}
+    {% include "timeline.html" with logs=r.status_logs r=r %}
 </div>
 {% endif %}
 
-{% if request.user == r.pemohon %}
-    {% if r.status == "Pembetulan Oleh Pemohon" %}
+{% if request.user == r.pemohon %}{% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" or r.status == "Tidak Mendapat Kelulusan Pengarah BITG" or r.status == "Pembetulan Oleh Pemohon" %}
     <div class="reject-alert">
         <p><b>Permohonan Dikembalikan Untuk Pembetulan.</b></p>
         {% if r.status_logs %}<p>Sebab: {{ r.status_logs.0.sebab_tolak|default:"-" }}</p>{% endif %}
-        <p><a href="{% url 'borang_serahan_edit' r.id %}" class="btn-approve">Edit & Hantar Semula</a></p>
+        <p>
+            <a href="{% if r.borang_type == 'SERAHAN' %}{% url 'borang_serahan_edit' r.id %}{% else %}{% url 'borang_pinjaman_edit' r.id %}{% endif %}" class="btn-approve">Edit & Hantar Semula</a>
+        </p>
     </div>
-    {% endif %}
-
-    {% if r.status == "Tidak Disokong Oleh Pengarah Bahagian" or r.status == "Tidak Mendapat Kelulusan Pengarah BITG" %}
-    <div class="reject-alert">
-        <p><b>Permohonan Tidak Disokong / Tidak Diluluskan.</b></p>
-        {% if r.status_logs %}<p>Sebab: {{ r.status_logs.0.sebab_tolak|default:"-" }}</p>{% endif %}
-        <p><a href="{% if r.borang_type == 'SERAHAN' %}{% url 'borang_serahan' %}{% else %}{% url 'borang_pinjaman' %}{% endif %}" class="btn-approve">Borang Baru</a></p>
-    </div>
-    {% endif %}
-{% endif %}
+{% endif %}{% endif %}

@@ -32,10 +32,11 @@ SERAHAN_STEPS = [
     "Disokong Oleh Pengarah Bahagian",
     "Tidak Mendapat Kelulusan Pengarah BITG",
     "Mendapat Kelulusan Pengarah BITG",
-    "Verifikasi Data Oleh PIC",
+    "Penugasan PIC",
+    "Pemohon Hantar Data",
     "Pembetulan Oleh Pemohon",
-    "Pengesahan Verifikasi",
-    "Serahan Data",
+    "Verifikasi Data",
+    "Sahkan Penerimaan Data",
     "Selesai",
 ]
 
@@ -45,10 +46,10 @@ PINJAMAN_STEPS = [
     "Disokong Oleh Pengarah Bahagian",
     "Tidak Mendapat Kelulusan Pengarah BITG",
     "Mendapat Kelulusan Pengarah BITG",
-    "Penugasan PIC Oleh Pengarah BITG",
-    "Penyediaan Data",
-    "Semakan Oleh Pemohon",
-    "Sahkan Penerimaan Data",
+    "Penugasan PIC",
+    "PIC Hantar Data",
+    "Pemohon Semak Data",
+    "Pemohon Sahkan Penerimaan Data",
     "Selesai",
 ]
 
@@ -56,6 +57,17 @@ STEPS = {
     "SERAHAN": SERAHAN_STEPS,
     "PINJAMAN": PINJAMAN_STEPS,
 }
+
+SERAHAN_REJECT = [
+    "Tidak Disokong Oleh Pengarah Bahagian",
+    "Tidak Mendapat Kelulusan Pengarah BITG",
+    "Pembetulan Oleh Pemohon",
+]
+
+PINJAMAN_REJECT = [
+    "Tidak Disokong Oleh Pengarah Bahagian",
+    "Tidak Mendapat Kelulusan Pengarah BITG",
+]
 
 
 # =============================
@@ -128,7 +140,7 @@ def annotate_steps(obj):
     obj.overdue = bool(
         obj.borang_type == "PINJAMAN"
         and obj.deadline
-        and obj.status in ["Penyediaan Data", "Semakan Oleh Pemohon"]
+        and obj.status in ["Penugasan PIC", "PIC Hantar Data"]
         and timezone.now() > obj.deadline
     )
     obj.status_logs = StatusLog.objects.filter(
@@ -175,8 +187,8 @@ def request_base_segments(scope, user):
         return segments
     if scope == "pic":
         return [
-            (SerahanRequest, SerahanRequest.objects.filter(pic=user, status="Verifikasi Data Oleh PIC")),
-            (PinjamanRequest, PinjamanRequest.objects.filter(pic=user, status="Penyediaan Data")),
+            (SerahanRequest, SerahanRequest.objects.filter(pic=user, status__in=["Pemohon Hantar Data", "Verifikasi Data"])),
+            (PinjamanRequest, PinjamanRequest.objects.filter(pic=user, status="Penugasan PIC")),
         ]
     return []
 
@@ -197,7 +209,7 @@ def row_json(o):
     overdue = bool(
         o.borang_type == "PINJAMAN"
         and o.deadline
-        and o.status in ["Penyediaan Data", "Semakan Oleh Pemohon"]
+        and o.status in ["Penugasan PIC", "PIC Hantar Data"]
         and timezone.now() > o.deadline
     )
     return {
@@ -272,6 +284,14 @@ def duplicate_submission(user, model, data, keys):
     new_sig = tuple(str(data.get(k) or "") for k in keys)
     old_sig = tuple(str(getattr(last, k) or "") for k in keys)
     return new_sig == old_sig
+
+
+def already_resubmitted(obj, user, reject_set):
+    """True if the user already resubmitted after the latest rejection."""
+    logs = StatusLog.objects.filter(borang_type=obj.borang_type, object_id=obj.id)
+    last_reject = logs.filter(status__in=reject_set).order_by("-changed_at").first()
+    last_resubmit = logs.filter(status="Borang Telah Dihantar", changed_by=user).order_by("-changed_at").first()
+    return bool(last_resubmit and (not last_reject or last_resubmit.changed_at > last_reject.changed_at))
 
 
 def applicant_info(user):
@@ -403,6 +423,51 @@ def serah_prefill(obj):
     }
 
 
+def pinjam_form_data(request):
+    """Parse submitted pinjaman form fields into a dict for create/update."""
+    komponen = request.POST.getlist("komponen_data")
+    komponen_lain = request.POST.get("komponen_lain")
+
+    daerah = request.POST.get("daerah")
+    daerah_text = None
+    if daerah == "LAIN":
+        daerah_text = request.POST.get("daerah_lain")
+        daerah = None
+    mukim = request.POST.get("mukim")
+    mukim_text = None
+    if mukim == "LAIN":
+        mukim_text = request.POST.get("mukim_lain")
+        mukim = None
+
+    return {
+        "komponen_data": ", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
+        "negeri": Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
+        "daerah": Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
+        "mukim": Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
+        "daerah_text": daerah_text,
+        "mukim_text": mukim_text,
+        "indeks": request.POST.get("indeks"),
+        "tujuan": request.POST.get("tujuan"),
+        "cacatan": request.POST.get("cacatan"),
+        "Setuju": bool(request.POST.get("Setuju")),
+        "nama": request.POST.get("nama"),
+        "Tarikh": request.POST.get("Tarikh"),
+        "uploaded_file": request.FILES.get("file"),
+    }
+
+
+def pinjam_prefill(obj):
+    return {
+        "komponen_data": selected_values(obj.komponen_data),
+        "komponen_lain": split_lain(obj.komponen_data),
+        "tujuan": obj.tujuan or "",
+        "cacatan": obj.cacatan or "",
+        "Setuju": obj.Setuju,
+        "nama": obj.nama or "",
+        "Tarikh": obj.Tarikh or "",
+    }
+
+
 @login_required
 def borang_serahan(request):
     if request.method == "POST":
@@ -443,14 +508,11 @@ def borang_serahan(request):
 @login_required
 def borang_serahan_edit(request, request_id):
     obj = SerahanRequest.objects.filter(id=request_id).first()
-    if not obj or obj.pemohon_id != request.user.id or obj.status != "Pembetulan Oleh Pemohon":
+    if not obj or obj.pemohon_id != request.user.id or obj.status not in SERAHAN_REJECT:
         return redirect("status")
 
     if request.method == "POST":
-        logs = StatusLog.objects.filter(borang_type=obj.borang_type, object_id=obj.id)
-        last_pembetulan = logs.filter(status="Pembetulan Oleh Pemohon").order_by("-changed_at").first()
-        last_resubmit = logs.filter(status="Borang Telah Dihantar", changed_by=request.user).order_by("-changed_at").first()
-        if last_resubmit and (not last_pembetulan or last_resubmit.changed_at > last_pembetulan.changed_at):
+        if already_resubmitted(obj, request.user, SERAHAN_REJECT):
             return redirect("status")
         data = serah_form_data(request)
         data.pop("uploaded_file")
@@ -562,6 +624,49 @@ def borang_pinjaman(request):
         "applicant_name": applicant_name,
         "applicant_email": applicant_email,
         "applicant_phone": applicant_phone,
+    })
+
+
+@login_required
+def borang_pinjaman_edit(request, request_id):
+    obj = PinjamanRequest.objects.filter(id=request_id).first()
+    if not obj or obj.pemohon_id != request.user.id or obj.status not in PINJAMAN_REJECT:
+        return redirect("status")
+
+    if request.method == "POST":
+        if already_resubmitted(obj, request.user, PINJAMAN_REJECT):
+            return redirect("status")
+        data = pinjam_form_data(request)
+        data.pop("uploaded_file")
+        for field, value in data.items():
+            setattr(obj, field, value)
+        obj.bahagian = user_bahagian(request.user) or obj.bahagian
+        obj.pic = None
+        obj.deadline = None
+        obj.save()
+        log_status(obj, "Borang Telah Dihantar", request.user)
+        send_notif(
+            "Permohonan Pinjaman Dihantar Semula",
+            f"Hi {obj.namapemohon}, permohonan anda telah dikemaskini dan dihantar semula. ID: {obj.id}",
+            [obj.email],
+        )
+        send_notif(
+            "Permohonan Semula Memerlukan Kelulusan",
+            f"Permohonan telah dikemaskini dan dihantar semula.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
+            bahagian_pb_emails(obj.bahagian),
+        )
+        return redirect("status")
+
+    applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
+
+    return render(request, "borang_pinjaman.html", {
+        "negeri_list": Negeri.objects.all(),
+        "applicant_name": applicant_name,
+        "applicant_email": applicant_email,
+        "applicant_phone": applicant_phone,
+        "editing": True,
+        "obj": obj,
+        "prefill": pinjam_prefill(obj),
     })
 
 
@@ -758,10 +863,6 @@ def approve_request(request, borang_type, request_id):
         else:
             log_status(data, "Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan)
             send_notif("Permohonan Diluluskan (BITG)", f"Permohonan ID {data.id} telah diluluskan oleh Pengarah BITG.\nUlasan: {ulasan or '-'}", [data.email])
-            if data.borang_type == "SERAHAN":
-                send_notif("Permohonan Memerlukan Penugasan PIC", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", bitg_emails())
-            else:
-                send_notif("Permohonan Memerlukan Penugasan", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk penugasan PIC.", bitg_emails())
     else:
         return HttpResponseForbidden("Not allowed")
 
@@ -791,17 +892,20 @@ def assign_pic(request, borang_type, request_id):
         if data.borang_type == "SERAHAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
             data.pic = pic_user
             data.save()
-            log_status(data, "Verifikasi Data Oleh PIC", user)
+            log_status(data, "Penugasan PIC", user, ulasan=f"PIC ditugaskan: {pic_user.username}")
         elif data.borang_type == "PINJAMAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
             data.pic = pic_user
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
-            log_status(data, "Penyediaan Data", user)
+            log_status(data, "Penugasan PIC", user, ulasan=f"PIC ditugaskan: {pic_user.username}")
         else:
             return HttpResponseForbidden("Not allowed")
 
         send_notif("Tugasan Baru Diterima", f"Anda telah ditugaskan untuk permohonan ID {data.id}.\nPemohon: {data.namapemohon}", [pic_user.email])
-        send_notif("PIC Telah Ditetapkan", f"Permohonan anda (ID {data.id}) diberikan kepada PIC untuk diproses.", [data.email])
+        if data.borang_type == "SERAHAN":
+            send_notif("PIC Telah Ditetapkan", f"Permohonan anda (ID {data.id}) telah diberikan kepada PIC.\nSila hantar data (emel/cetakan) kepada PIC untuk verifikasi.", [data.email])
+        else:
+            send_notif("PIC Telah Ditetapkan", f"Permohonan anda (ID {data.id}) diberikan kepada PIC untuk diproses.", [data.email])
         return redirect("pengarah_dashboard")
 
     return HttpResponseForbidden("POST only")
@@ -825,6 +929,24 @@ def assign_pic_page(request):
 
 
 # =============================
+# PEMOHON HANTAR DATA (SERAHAN)
+# =============================
+
+@login_required
+def pemohon_hantar_data(request, request_id):
+    obj = SerahanRequest.objects.filter(id=request_id).first()
+    if not obj or obj.pemohon_id != request.user.id or obj.status != "Penugasan PIC":
+        return HttpResponseForbidden("Not allowed")
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only")
+
+    catatan = request.POST.get("catatan")
+    log_status(obj, "Pemohon Hantar Data", request.user, ulasan=catatan)
+    send_notif("Data Dihantar", f"Pemohon telah menghantar data untuk permohonan ID {obj.id}.\nSila verifikasi.", [obj.pic.email] if obj.pic else [])
+    return redirect("status")
+
+
+# =============================
 # VERIFY / DELIVER / CONFIRM
 # =============================
 
@@ -842,7 +964,7 @@ def verify_data(request, borang_type, request_id):
     sebab = request.POST.get("sebab_tolak")
 
     # SERAHAN: PIC verifikasi / pembetulan (kembali kepada pemohon)
-    if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Verifikasi Data Oleh PIC":
+    if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Pemohon Hantar Data":
         if action == "reject":
             log_status(data, "Pembetulan Oleh Pemohon", user, sebab_tolak=sebab or "-")
             send_notif(
@@ -850,36 +972,35 @@ def verify_data(request, borang_type, request_id):
                 f"Data permohonan ID {data.id} perlu pembetulan.\nSebab: {sebab}\nSila login untuk mengedit dan menghantar semula.",
                 [data.email],
             )
-            send_notif("Pembetulan Diperlukan", f"Permohonan ID {data.id} dikembalikan kepada pemohon untuk pembetulan.\nSebab: {sebab}", bitg_emails())
         else:
-            log_status(data, "Pengesahan Verifikasi", user)
-            send_notif("Verifikasi Data Selesai", f"Verifikasi permohonan ID {data.id} selesai.", bitg_emails())
+            log_status(data, "Verifikasi Data", user)
+            send_notif("Verifikasi Data Disahkan", f"Verifikasi permohonan ID {data.id} selesai. Menunggu penerimaan data.", [data.email])
 
-    # SERAHAN: BITG sahkan verifikasi -> serahan -> selesai
-    elif data.borang_type == "SERAHAN" and is_bitg(user) and data.status == "Pengesahan Verifikasi":
-        if action == "reject":
-            log_status(data, "Verifikasi Data Oleh PIC", user, sebab_tolak=sebab or "-")
-        else:
-            log_status(data, "Serahan Data", user)
-            log_status(data, "Selesai", user)
-            send_notif("Serahan Data Selesai", f"Data permohonan ID {data.id} telah diserahkan.", [data.email])
+    # SERAHAN: PIC sahkan penerimaan data -> selesai
+    elif data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Verifikasi Data":
+        log_status(data, "Sahkan Penerimaan Data", user)
+        log_status(data, "Selesai", user)
+        send_notif("Serahan Data Selesai", f"Data permohonan ID {data.id} telah disahkan dan diterima.", [data.email])
 
-    # PINJAMAN: PIC sahkan data sedia -> semakan oleh pemohon
-    elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Penyediaan Data":
+    # PINJAMAN: PIC hantar data -> semakan oleh pemohon
+    elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Penugasan PIC":
+        ulasan_pic = request.POST.get("ulasan")
         data.deadline = timezone.now() + timedelta(days=5)
         data.save()
-        log_status(data, "Semakan Oleh Pemohon", user)
-        send_notif("Data Sedia Untuk Semakan", f"Data permohonan ID {data.id} telah disediakan. Sila semak.", [data.email])
+        log_status(data, "PIC Hantar Data", user, ulasan=ulasan_pic)
+        send_notif("Data Sedia Untuk Semakan", f"Data permohonan ID {data.id} telah dihantar. Sila semak.", [data.email])
 
-    # PINJAMAN: Pemohon sahkan penerimaan / kembali kepada PIC
-    elif data.borang_type == "PINJAMAN" and data.pemohon_id == user.id and data.status == "Semakan Oleh Pemohon":
+    # PINJAMAN: Pemohon semak data -> sahkan penerimaan (1 klik) / kembali kepada PIC
+    elif data.borang_type == "PINJAMAN" and data.pemohon_id == user.id and data.status == "PIC Hantar Data":
         if action == "reject":
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
-            log_status(data, "Penyediaan Data", user, sebab_tolak=sebab or "-")
+            log_status(data, "Penugasan PIC", user, sebab_tolak=sebab or "-")
             send_notif("Pembetulan Diperlukan", f"Pemohon memerlukan pembetulan untuk permohonan ID {data.id}.\nSebab: {sebab}", [data.pic.email] if data.pic else [])
         else:
-            log_status(data, "Sahkan Penerimaan Data", user)
+            ulasan_pemohon = request.POST.get("ulasan")
+            log_status(data, "Pemohon Semak Data", user, ulasan=ulasan_pemohon)
+            log_status(data, "Pemohon Sahkan Penerimaan Data", user, ulasan=ulasan_pemohon)
             log_status(data, "Selesai", user)
             send_notif("Pinjaman Disahkan", f"Pemohon telah mengesahkan penerimaan data permohonan ID {data.id}.", group_emails("PIC"))
     else:

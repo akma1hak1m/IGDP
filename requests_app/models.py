@@ -203,10 +203,11 @@ class SerahanRequest(AbstractRequest):
         ("Disokong Oleh Pengarah Bahagian", "Disokong Oleh Pengarah Bahagian"),
         ("Tidak Mendapat Kelulusan Pengarah BITG", "Tidak Mendapat Kelulusan Pengarah BITG"),
         ("Mendapat Kelulusan Pengarah BITG", "Mendapat Kelulusan Pengarah BITG"),
-        ("Verifikasi Data Oleh PIC", "Verifikasi Data Oleh PIC"),
+        ("Penugasan PIC", "Penugasan PIC"),
+        ("Pemohon Hantar Data", "Pemohon Hantar Data"),
         ("Pembetulan Oleh Pemohon", "Pembetulan Oleh Pemohon"),
-        ("Pengesahan Verifikasi", "Pengesahan Verifikasi"),
-        ("Serahan Data", "Serahan Data"),
+        ("Verifikasi Data", "Verifikasi Data"),
+        ("Sahkan Penerimaan Data", "Sahkan Penerimaan Data"),
         ("Selesai", "Selesai"),
     ]
 
@@ -253,11 +254,10 @@ class PinjamanRequest(AbstractRequest):
         ("Disokong Oleh Pengarah Bahagian", "Disokong Oleh Pengarah Bahagian"),
         ("Tidak Mendapat Kelulusan Pengarah BITG", "Tidak Mendapat Kelulusan Pengarah BITG"),
         ("Mendapat Kelulusan Pengarah BITG", "Mendapat Kelulusan Pengarah BITG"),
-        ("Penugasan PIC Oleh Pengarah BITG", "Penugasan PIC Oleh Pengarah BITG"),
-        ("Penyediaan Data", "Penyediaan Data"),
-        ("Serahan Data", "Serahan Data"),
-        ("Semakan Oleh Pemohon", "Semakan Oleh Pemohon"),
-        ("Sahkan Penerimaan Data", "Sahkan Penerimaan Data"),
+        ("Penugasan PIC", "Penugasan PIC"),
+        ("PIC Hantar Data", "PIC Hantar Data"),
+        ("Pemohon Semak Data", "Pemohon Semak Data"),
+        ("Pemohon Sahkan Penerimaan Data", "Pemohon Sahkan Penerimaan Data"),
         ("Selesai", "Selesai"),
     ]
 
