@@ -193,17 +193,27 @@ document.addEventListener("click", function (e) {
     loadRows();
 });
 
+let modalPending = false;
 document.addEventListener("submit", function (e) {
     const form = e.target.closest("#detail-body form");
-    if (!form) return;
+    if (!form || modalPending) return;
+    modalPending = true;
+    form.querySelectorAll("[type='submit']").forEach(b => b.disabled = true);
     e.preventDefault();
-    fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Requested-With": "XMLHttpRequest" } })
+    const fd = new FormData(form);
+    if (e.submitter && e.submitter.name) fd.set(e.submitter.name, e.submitter.value);
+    fetch(form.getAttribute("action"), { method: "POST", body: fd, headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(r => {
             if (!r.ok) throw new Error("fail");
             return openDetail(current.bt, current.id);
         })
         .then(() => loadRows())
-        .catch(() => { $("detail-body").innerHTML = '<p class="empty-text">Ralat. Sila cuba lagi.</p>'; });
+        .catch(() => { $("detail-body").innerHTML = '<p class="empty-text">Ralat. Sila cuba lagi.</p>'; })
+        .finally(() => {
+            modalPending = false;
+            form.querySelectorAll("[type='submit']").forEach(b => b.disabled = false);
+            if (window.submitGuard) window.submitGuard.done(form);
+        });
 });
 
 let debounce;

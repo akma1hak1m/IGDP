@@ -257,7 +257,6 @@ class PinjamanRequest(AbstractRequest):
         ("Penyediaan Data", "Penyediaan Data"),
         ("Serahan Data", "Serahan Data"),
         ("Semakan Oleh Pemohon", "Semakan Oleh Pemohon"),
-        ("Pembetulan Oleh Pemohon", "Pembetulan Oleh Pemohon"),
         ("Sahkan Penerimaan Data", "Sahkan Penerimaan Data"),
         ("Selesai", "Selesai"),
     ]

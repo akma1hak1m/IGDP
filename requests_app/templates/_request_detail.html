@@ -48,12 +48,19 @@
     </form>
     {% endif %}
 
-    {% if request.user == r.pemohon and r.borang_type == "PINJAMAN" and r.status == "Serahan Data" %}
+    {% if is_pic and r.borang_type == "PINJAMAN" and r.status == "Penyediaan Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
-        <textarea name="sebab_tolak" placeholder="Sebab (jika perlu)"></textarea>
+        <button type="submit" name="action" value="approve" class="btn-approve">✔ Data Sedia / Hantar</button>
+    </form>
+    {% endif %}
+
+    {% if request.user == r.pemohon and r.borang_type == "PINJAMAN" and r.status == "Semakan Oleh Pemohon" %}
+    <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+        {% csrf_token %}
+        <textarea name="sebab_tolak" placeholder="Sebab (jika tidak tepat)"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan Penerimaan</button>
-        <button type="submit" name="action" value="reject" class="btn-reject">✘ Kembali Penyediaan</button>
+        <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Tepat</button>
     </form>
     {% endif %}
 

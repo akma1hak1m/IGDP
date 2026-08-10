@@ -346,6 +346,65 @@ class FlowTestBase(TestCase):
         self.assertEqual(p.pic, self.pic)
         self.assertIsNotNone(p.deadline)
 
+        self.verify(p, self.pic, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+
+        self.verify(p, self.pemohon, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Selesai")
+
+        self.assertEqual(
+            self.log_chain(p),
+            [
+                "Borang Telah Dihantar",
+                "Disokong Oleh Pengarah Bahagian",
+                "Mendapat Kelulusan Pengarah BITG",
+                "Penyediaan Data",
+                "Semakan Oleh Pemohon",
+                "Sahkan Penerimaan Data",
+                "Selesai",
+            ],
+        )
+
+    def test_pinjam_pemohon_reject_returns_to_pic(self):
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="approve")
+        self.approve(p, self.bitg, action="approve")
+        self.assign(p, self.bitg, self.pic)
+        self.verify(p, self.pic, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+
+        self.verify(p, self.pemohon, "reject", sebab_tolak="Data tidak tepat")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Penyediaan Data")
+        self.assertNotIn("Pembetulan Oleh Pemohon", self.log_chain(p))
+
+        self.verify(p, self.pic, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+
+        self.verify(p, self.pemohon, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Selesai")
+
+    def test_pic_confirm_only_for_assigned_pic(self):
+        other_pic = make_user("pic2", "PIC")
+        _, p = self.submit_pinjam()
+        self.approve(p, self.pb, action="approve")
+        self.approve(p, self.bitg, action="approve")
+        self.assign(p, self.bitg, self.pic)
+
+        resp = self.verify(p, other_pic, "approve")
+        self.assertEqual(resp.status_code, 403)
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Penyediaan Data")
+
+        self.verify(p, self.pic, "approve")
+        p.refresh_from_db()
+        self.assertEqual(p.status, "Semakan Oleh Pemohon")
+
     # ---------- permissions ----------
 
     def test_staff_cannot_approve(self):
@@ -366,18 +425,6 @@ class FlowTestBase(TestCase):
             {"action": "approve"},
         )
         self.assertEqual(resp.status_code, 403)
-
-    def test_pic_assignment_only_for_assigned_pic(self):
-        other_pic = make_user("pic2", "PIC")
-        _, p = self.submit_pinjam()
-        self.approve(p, self.pb, action="approve")
-        self.approve(p, self.bitg, action="approve")
-        self.assign(p, self.bitg, self.pic)
-
-        resp = self.verify(p, other_pic, "approve")
-        self.assertEqual(resp.status_code, 403)
-        p.refresh_from_db()
-        self.assertEqual(p.status, "Penyediaan Data")
 
     # ---------- cross-table id collision ----------
 
@@ -466,7 +513,7 @@ class FlowTestBase(TestCase):
     def test_requests_list_search_and_pagination(self):
         ids = []
         for i in range(3):
-            _, s = self.submit_serah()
+            _, s = self.submit_serah(komponen_data=[f"Jalan{i}"])
             ids.append(s.id)
         newest = max(ids)
 
@@ -539,6 +586,35 @@ class FlowTestBase(TestCase):
     def test_serah_snapshot_bahagian(self):
         _, s = self.submit_serah()
         self.assertEqual(s.bahagian, self.bs)
+
+    def test_duplicate_serah_submission_blocked(self):
+        _, s1 = self.submit_serah()
+        before = SerahanRequest.objects.filter(pemohon=self.pemohon).count()
+        self.assertEqual(before, 1)
+
+        r = self.c(self.pemohon).post(
+            reverse("borang_serahan"), self.serah_payload()
+        )
+        self.assertEqual(r.status_code, 302)
+        after = SerahanRequest.objects.filter(pemohon=self.pemohon).count()
+        self.assertEqual(after, 1)
+        self.assertEqual(SerahanRequest.objects.latest("id").id, s1.id)
+
+    def test_distinct_serah_submission_allowed(self):
+        self.submit_serah()
+        self.submit_serah(komponen_data=["DEM"])
+        self.assertEqual(
+            SerahanRequest.objects.filter(pemohon=self.pemohon).count(), 2
+        )
+
+    def test_duplicate_pinjam_submission_blocked(self):
+        _, p1 = self.submit_pinjam()
+        r = self.c(self.pemohon).post(
+            reverse("borang_pinjaman"), self.pinjam_payload()
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(PinjamanRequest.objects.filter(pemohon=self.pemohon).count(), 1)
+        self.assertEqual(PinjamanRequest.objects.latest("id").id, p1.id)
 
     def test_pb_dashboard_filters_by_bahagian(self):
         pb_other = make_user("pb_bkp", "Pengarah Bahagian", bahagian=self.bkp)
