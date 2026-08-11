@@ -4,7 +4,7 @@
     {% else %}
         <span class="badge-pinjaman">PINJAMAN</span>
     {% endif %}
-    <span class="request-id">#{{ r.id }}</span>
+    <span class="request-id">NO {{ r.id }}</span>
     {% if r.overdue %}<span class="badge-overdue">TERLEWAT</span>{% endif %}
     <span class="status-badge">{{ r.status }}</span>
 </div>
@@ -73,7 +73,14 @@
     {% endif %}
 
     {% if is_bitg and r.status == "Mendapat Kelulusan Pengarah BITG" %}
-    <a href="{% url 'assign_pic_page' %}" class="btn-assign">Penugasan PIC</a>
+    <form method="POST" action="{% url 'assign_pic' r.borang_type r.id %}">
+        {% csrf_token %}
+        <select name="pic" required class="detail-select">
+            <option value="">Pilih PIC...</option>
+            {% for u in pic_users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-assign">✔ Tugaskan PIC</button>
+    </form>
     {% endif %}
 
 </div>

@@ -7,7 +7,7 @@
 
 {% if editing %}
 <div class="reject-alert">
-    <p><b>Mengedit Permohonan #{{ obj.id }}</b></p>
+    <p><b>Mengedit Permohonan NO {{ obj.id }}</b></p>
     <p>Permohonan telah dikembalikan untuk pembetulan. Kemaskini maklumat dan hantar semula untuk kelulusan.</p>
 </div>
 {% endif %}
@@ -21,7 +21,7 @@
 <!-- SECTION 1 -->
 <div class="form-section">
 
-<h3 class="section-title">1. Details Pemohon</h3>
+<h3 class="section-title">1. Maklumat Pemohon<span class="req-star">*</span></h3>
 
 <div class="form-grid-2">
 
@@ -36,8 +36,8 @@
 </div>
 
 <div class="form-group">
-<label>No. Telefon</label>
-<input type="text" name="telefon" value="{% if editing %}{{ obj.telefon|default:"" }}{% else %}{{ applicant_phone }}{% endif %}" placeholder="No. telefon (jika belum lengkap)">
+<label>No. Telefon<span class="req-star">*</span></label>
+<input type="text" name="telefon" value="{% if editing %}{{ obj.telefon|default:"" }}{% else %}{{ applicant_phone }}{% endif %}" placeholder="No. telefon (jika belum lengkap)" required>
 </div>
 
 
@@ -49,14 +49,14 @@
 <!-- SECTION 1 -->
 <div class="form-section">
 
-<h3 class="section-title">2. Komponen & Jenis Data</h3>
+<h3 class="section-title">2. Komponen & Jenis Data<span class="req-star">*</span></h3>
 
 <div class="data-grid">
 
 <div class="data-box">
 <h4>DATA ASAS</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" required {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Daerah" {% if editing and "Sempadan Daerah" in prefill.komponen_data %}checked{% endif %}> Sempadan Daerah</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Mukim" {% if editing and "Sempadan Mukim" in prefill.komponen_data %}checked{% endif %}> Sempadan Mukim</label>
 <label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan" {% if editing and "Nama Bandar/Pekan" in prefill.komponen_data %}checked{% endif %}> Nama Bandar / Pekan</label>
@@ -151,17 +151,15 @@
 </div>
 
 </div>
-
-</div>
 <div class="divider-line"></div>
 
 <!-- SECTION 2 -->
-<h3 class="section-title">3. Kawasan</h3>
+<h3 class="section-title">3. Kawasan<span class="req-star">*</span></h3>
 
 <div class="form-grid-3">
 
 <div class="form-group">
-<label>Negeri</label>
+<label>Negeri<span class="req-star">*</span></label>
 <select name="negeri" id="negeri" required>
 <option value="">-- Pilih Negeri --</option>
 
@@ -173,7 +171,7 @@
 </div>
 
 <div class="form-group">
-<label>Daerah</label>
+<label>Daerah<span class="req-star">*</span></label>
 
 <select id="daerah" name="daerah" required>
 <option value="">-- Pilih Daerah --</option>
@@ -189,7 +187,7 @@ style="display:none; margin-top:10px;">
 
 
 <div class="form-group">
-<label>Mukim</label>
+<label>Mukim<span class="req-star">*</span></label>
 
 <select id="mukim" name="mukim" required>
 <option value="">-- Pilih Mukim --</option>
@@ -204,11 +202,12 @@ style="display:none; margin-top:10px;">
 </div>
 
 <div class="form-group">
-<label>Indeks Peta Topo</label>
+<label>Indeks Peta Topo<span class="req-star">*</span></label>
 <input type="text"
 name="indeks"
 value="{% if editing %}{{ obj.indeks|default:"" }}{% endif %}"
-placeholder="Contoh: NB-47-2">
+placeholder="Contoh: NB-47-2"
+required>
 </div>
 
 </div>
@@ -218,14 +217,14 @@ placeholder="Contoh: NB-47-2">
 <!-- SECTION 3 -->
 <div class="form-section">
 
-<h3 class="section-title">4. Tujuan Pinjaman / Kegunaan Data / Projek</h3>
+<h3 class="section-title">4. Tujuan Pinjaman / Kegunaan Data / Projek<span class="req-star">*</span></h3>
 
 <div class="form-group">
-<textarea name="tujuan" rows="5" placeholder="Nyatakan tujuan pinjaman / kegunaan data / projek">{% if editing %}{{ obj.tujuan|default:"" }}{% endif %}</textarea>
+<textarea name="tujuan" rows="3" placeholder="Nyatakan tujuan pinjaman / kegunaan data / projek" required>{% if editing %}{{ obj.tujuan|default:"" }}{% endif %}</textarea>
 </div>
 
 <div class="form-group">
-<textarea name="cacatan" rows="4" placeholder="Cacatan (optional)">{% if editing %}{{ obj.cacatan|default:"" }}{% endif %}</textarea>
+<textarea name="cacatan" rows="2" placeholder="Catatan (jika ada)">{% if editing %}{{ obj.cacatan|default:"" }}{% endif %}</textarea>
 </div>
 
 <div class="divider-line"></div>
@@ -234,18 +233,19 @@ placeholder="Contoh: NB-47-2">
 <!-- SECTION 4 -->
 <div class="form-section">
 
-<h3 class="section-title">5. Pemohon</h3>
+<h3 class="section-title">5. Pemohon<span class="req-star">*</span></h3>
 
 <div class="data-box">
 
-<label><input type="checkbox" name="Setuju" value="Pemohon Setuju" {% if editing and prefill.Setuju %}checked{% endif %}> "Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan peribadi saya.<br>
-    Tindakan di Bawah Jawatankuasa Disiplin dan Tatatertib Agensi Angkasa Malaysia boleh diambil <br>
-    ke atas saya sekiranya saya melanggar syarat di atas."
+<label><input type="checkbox" name="Setuju" value="Pemohon Setuju" required {% if editing and prefill.Setuju %}checked{% endif %}>
+    <span class="declaration-text">Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan peribadi saya. Tindakan di Bawah Jawatankuasa Disiplin dan Tatatertib Agensi Angkasa Malaysia boleh diambil ke atas saya sekiranya saya melanggar syarat di atas.</span>
 </label>
 
-<input type="text" name="nama" value="{% if editing %}{{ obj.nama|default:"" }}{% endif %}" placeholder="Nama Penuh">
-<input type="date" name="Tarikh" value="{% if editing %}{{ obj.Tarikh|default:"" }}{% endif %}" class="date-input">
+<input type="text" name="nama" value="{% if editing %}{{ obj.nama|default:"" }}{% endif %}" placeholder="Nama Penuh" required>
+<input type="date" name="Tarikh" value="{% if editing %}{{ obj.Tarikh|default:"" }}{% endif %}" class="date-input" required>
 
+
+</div>
 
 </div>
 

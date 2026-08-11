@@ -304,7 +304,9 @@ class FlowTestBase(TestCase):
 
         self.verify(s, self.pic, "reject", sebab_tolak="Data tidak lengkap")
         subjects = [m.subject for m in mail.outbox]
-        self.assertIn("Pembetulan Diperlukan", subjects)
+        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] Permohonan SERAHAN DATA") for sub in subjects))
+        bodies = " ".join(m.body for m in mail.outbox)
+        self.assertIn("pembetulan", bodies.lower())
         tos = [email for m in mail.outbox for email in m.to]
         self.assertIn(self.pemohon.email, tos)
 
@@ -560,8 +562,11 @@ class FlowTestBase(TestCase):
 
         _, s = self.submit_serah()
         subjects = [m.subject for m in mail.outbox]
-        self.assertIn("Permohonan Serahan Diterima", subjects)
-        self.assertIn("Permohonan Baru Memerlukan Kelulusan", subjects)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] Permohonan SERAHAN DATA") for sub in subjects))
+        bodies = " ".join(m.body for m in mail.outbox)
+        self.assertIn("Borang Telah Dihantar", bodies)
+        self.assertIn("Pengarah Bahagian", bodies)
 
     def test_timeline_renders_on_status_and_admin_pages(self):
         _, s = self.submit_serah()

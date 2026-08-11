@@ -236,15 +236,253 @@ def request_list_context():
     }
 
 
-def send_notif(subject, message, recipient_list):
-    if recipient_list:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=recipient_list,
-            fail_silently=True,
-        )
+SYSTEM_URL = "https://igdp.mysa.gov.my"
+
+JENIS_LABEL = {"SERAHAN": "SERAHAN DATA", "PINJAMAN": "PINJAMAN DATA"}
+
+ACTION_TEXT = {
+    "submit": {
+        "pemohon": (
+            "Tiada tindakan diperlukan. Permohonan telah diterima oleh sistem.",
+            "Menunggu sokongan Pengarah Bahagian.",
+        ),
+        "pb": (
+            "Sila semak dan berikan sokongan terhadap permohonan ini.",
+            "Sokongan Pengarah Bahagian kemudiannya diteruskan kepada kelulusan Pengarah BITG.",
+        ),
+    },
+    "resubmit": {
+        "pemohon": (
+            "Tiada tindakan diperlukan. Permohonan telah dikemaskini dan dihantar semula.",
+            "Menunggu sokongan Pengarah Bahagian.",
+        ),
+        "pb": (
+            "Sila semak permohonan yang telah dikemaskini dan berikan sokongan.",
+            "Sokongan Pengarah Bahagian kemudiannya diteruskan kepada kelulusan Pengarah BITG.",
+        ),
+    },
+    "pb_reject": {
+        "pemohon": (
+            "Sila semak sebab permohonan tidak disokong dan buat pembetulan yang diperlukan.",
+            "Permohonan boleh dihantar semula selepas pembetulan dibuat.",
+        ),
+    },
+    "pb_approve": {
+        "pemohon": (
+            "Tiada tindakan diperlukan pada peringkat ini.",
+            "Permohonan diteruskan kepada kelulusan Pengarah BITG.",
+        ),
+        "bitg": (
+            "Sila berikan kelulusan terhadap permohonan ini.",
+            "Kelulusan Pengarah BITG membolehkan penugasan PIC.",
+        ),
+    },
+    "bitg_reject": {
+        "pemohon": (
+            "Sila semak sebab permohonan tidak diluluskan dan buat pembetulan yang diperlukan.",
+            "Permohonan boleh dihantar semula selepas pembetulan dibuat.",
+        ),
+    },
+    "bitg_approve": {
+        "pemohon": (
+            "Tiada tindakan diperlukan pada peringkat ini.",
+            "Permohonan menunggu penugasan PIC oleh Pengarah BITG.",
+        ),
+    },
+    "assign_pic": {
+        "pic": (
+            "Sila ambil tindakan terhadap tugasan yang telah diberikan.",
+            "SERAHAN: Menunggu pemohon menghantar data. PINJAMAN: Sediakan dan hantar data kepada pemohon.",
+        ),
+    },
+    "assign_serah": {
+        "pemohon": (
+            "Sila hantar data (emel/cetakan) kepada PIC yang ditugaskan untuk verifikasi.",
+            "PIC akan melaksanakan verifikasi data yang diterima.",
+        ),
+    },
+    "assign_pinjam": {
+        "pemohon": (
+            "Tiada tindakan diperlukan pada peringkat ini.",
+            "PIC akan menyediakan dan menghantar data kepada anda.",
+        ),
+    },
+    "hantar_data": {
+        "pic": (
+            "Sila laksanakan verifikasi data yang telah diterima.",
+            "Sahkan penerimaan data atau kembalikan kepada pemohon untuk pembetulan.",
+        ),
+    },
+    "verify_ok": {
+        "pemohon": (
+            "Tiada tindakan diperlukan pada peringkat ini.",
+            "Menunggu PIC mengesahkan penerimaan data.",
+        ),
+    },
+    "verify_reject": {
+        "pemohon": (
+            "Sila semak sebab pembetulan dan kemaskini data yang diperlukan.",
+            "Permohonan boleh dihantar semula selepas pembetulan dibuat.",
+        ),
+    },
+    "serah_selesai": {
+        "pemohon": (
+            "Tiada tindakan diperlukan. Permohonan telah selesai.",
+            "Permohonan ditutup.",
+        ),
+    },
+    "pic_hantar": {
+        "pemohon": (
+            "Sila semak data yang telah diterima.",
+            "Sahkan penerimaan data atau kembalikan kepada PIC untuk pembetulan.",
+        ),
+    },
+    "pinjam_reject": {
+        "pic": (
+            "Sila buat pembetulan dan hantar semula data kepada pemohon.",
+            "Pemohon akan mengesahkan penerimaan data.",
+        ),
+    },
+    "pinjam_selesai": {
+        "pic_all": (
+            "Tiada tindakan diperlukan. Permohonan telah selesai.",
+            "Permohonan ditutup.",
+        ),
+    },
+    "manual_status": {
+        "pemohon": (
+            "Sila semak status terkini permohonan anda melalui sistem.",
+            "Tiada tindakan seterusnya selain pemantauan status.",
+        ),
+    },
+}
+
+
+def role_label(user):
+    groups = list(user.groups.values_list("name", flat=True))
+    for name in ("Pengarah Bahagian", "PIC", "Admin", "Staff"):
+        if name in groups:
+            return name
+    return "Pegawai"
+
+
+def step_label(borang_type, status):
+    steps = STEPS[borang_type]
+    if status in steps:
+        return f"Langkah {steps.index(status) + 1}/{len(steps)}"
+    return "-"
+
+
+def signature_block(user):
+    name = user.get_full_name() or user.username
+    profile = getattr(user, "profile", None)
+    bahagian = profile.bahagian.nama if profile and profile.bahagian_id else "-"
+    phone = profile.phone if profile and profile.phone else "-"
+    email = user.email or settings.DEFAULT_FROM_EMAIL
+    return (
+        f"{name}\n"
+        f"{role_label(user)}\n"
+        f"{bahagian}\n"
+        f"AGENSI ANGKASA MALAYSIA (MYSA)\n"
+        f"No. Telefon: {phone}\n"
+        f"Emel: {email}"
+    )
+
+
+def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=None, changed_by=None):
+    """Send formalised notification email for a request action."""
+    if not recipients:
+        return
+
+    actor = changed_by or getattr(obj, "pemohon", None)
+    jenis = JENIS_LABEL.get(obj.borang_type, "PERMOHONAN DATA")
+    tindakan, seterusnya = ACTION_TEXT[action][recipient_role]
+
+    tarikh_permohonan = obj.created_at.strftime("%d/%m/%Y") if obj.created_at else "-"
+    tarikh_status = timezone.localtime().strftime("%d/%m/%Y %H:%M")
+    data_dipohon = (obj.komponen_data or "-").strip()[:120]
+    actor_name = actor.get_full_name() or actor.username if actor else "-"
+    actor_line = f"{actor_name} ({role_label(actor)})" if actor else "-"
+
+    parts = [
+        "Assalamualaikum dan Salam Sejahtera,",
+        "",
+        "YBhg. Datuk/Dato'/Tuan/Puan,",
+        "",
+        f"PERMOHONAN {jenis} – {obj.id}",
+        "",
+        "Dengan hormatnya perkara di atas adalah dirujuk.",
+        "",
+        "Untuk makluman, permohonan berikut telah dikemukakan melalui Sistem Permohonan Data untuk tindakan dan perhatian pihak YBhg. Datuk/Dato'/Tuan/Puan.",
+        "",
+        "MAKLUMAT PERMOHONAN",
+        "--------------------------------------------------",
+        f"No. Permohonan     : {obj.id}",
+        f"Jenis Permohonan   : {jenis}",
+        f"Nama Pemohon       : {obj.namapemohon or '-'}",
+        f"Agensi/Bahagian    : {obj.bahagian.nama if obj.bahagian_id else '-'}",
+        f"Tarikh Permohonan  : {tarikh_permohonan}",
+        f"Data Dipohon       : {data_dipohon}",
+        "--------------------------------------------------",
+        "",
+        "STATUS PERMOHONAN",
+        "--------------------------------------------------",
+        f"Status Semasa      : {status}",
+        f"Peringkat          : {step_label(obj.borang_type, status)}",
+        f"Tarikh Status      : {tarikh_status}",
+        f"Tindakan Oleh      : {actor_line}",
+        "--------------------------------------------------",
+        "",
+        "TINDAKAN DIPERLUKAN",
+        "--------------------------------------------------",
+        tindakan,
+        "",
+    ]
+
+    if sebab or ulasan:
+        lines = []
+        if sebab:
+            lines.append(f"Sebab   : {sebab}")
+        if ulasan:
+            lines.append(f"Ulasan  : {ulasan}")
+        parts += [
+            "ULASAN / SEBAB",
+            "--------------------------------------------------",
+            "\n".join(lines),
+            "--------------------------------------------------",
+            "",
+        ]
+
+    parts += [
+        "TINDAKAN SETERUSNYA",
+        "--------------------------------------------------",
+        seterusnya,
+        "--------------------------------------------------",
+        "",
+        "Untuk makluman, pihak YBhg. Datuk/Dato'/Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut.",
+        "",
+        "Pautan Sistem:",
+        SYSTEM_URL,
+        "",
+        "Kerjasama dan tindakan pihak YBhg. Datuk/Dato'/Tuan/Puan berhubung perkara ini amat dihargai.",
+        "",
+        "Sekian, terima kasih.",
+        "",
+        '"BERKHIDMAT UNTUK NEGARA"',
+        "",
+        "Yang benar,",
+        "",
+        signature_block(actor) if actor else f"-",
+    ]
+
+    subject = f"[TINDAKAN DIPERLUKAN] Permohonan {jenis} – {obj.id}"
+    send_mail(
+        subject=subject,
+        message="\n".join(parts),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        fail_silently=True,
+    )
 
 
 def group_emails(group_name):
@@ -483,16 +721,8 @@ def borang_serahan(request):
             **data,
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
-        send_notif(
-            "Permohonan Serahan Diterima",
-            f"Hi {obj.namapemohon}, permohonan anda telah dihantar. ID: {obj.id}",
-            [obj.email],
-        )
-        send_notif(
-            "Permohonan Baru Memerlukan Kelulusan",
-            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
-            bahagian_pb_emails(obj.bahagian),
-        )
+        notify(obj, "submit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -523,16 +753,8 @@ def borang_serahan_edit(request, request_id):
         obj.pic = None
         obj.save()
         log_status(obj, "Borang Telah Dihantar", request.user)
-        send_notif(
-            "Permohonan Serahan Dihantar Semula",
-            f"Hi {obj.namapemohon}, permohonan anda telah dikemaskini dan dihantar semula. ID: {obj.id}",
-            [obj.email],
-        )
-        send_notif(
-            "Permohonan Semula Memerlukan Kelulusan",
-            f"Permohonan telah dikemaskini dan dihantar semula.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
-            bahagian_pb_emails(obj.bahagian),
-        )
+        notify(obj, "resubmit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -605,16 +827,8 @@ def borang_pinjaman(request):
             uploaded_file=uploaded_file,
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
-        send_notif(
-            "Permohonan Pinjaman Diterima",
-            f"Hi {obj.namapemohon}, permohonan anda telah dihantar. ID: {obj.id}",
-            [obj.email],
-        )
-        send_notif(
-            "Permohonan Baru Memerlukan Kelulusan",
-            f"Permohonan baru telah dihantar.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
-            bahagian_pb_emails(obj.bahagian),
-        )
+        notify(obj, "submit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -645,16 +859,8 @@ def borang_pinjaman_edit(request, request_id):
         obj.deadline = None
         obj.save()
         log_status(obj, "Borang Telah Dihantar", request.user)
-        send_notif(
-            "Permohonan Pinjaman Dihantar Semula",
-            f"Hi {obj.namapemohon}, permohonan anda telah dikemaskini dan dihantar semula. ID: {obj.id}",
-            [obj.email],
-        )
-        send_notif(
-            "Permohonan Semula Memerlukan Kelulusan",
-            f"Permohonan telah dikemaskini dan dihantar semula.\n\nID: {obj.id}\nPemohon: {obj.namapemohon}\nBahagian: {obj.bahagian}\nSila login sistem untuk kelulusan.",
-            bahagian_pb_emails(obj.bahagian),
-        )
+        notify(obj, "resubmit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -801,6 +1007,7 @@ def request_detail(request, borang_type, request_id):
         "is_pengarah_bahagian": is_pengarah_bahagian(user),
         "is_bitg": is_bitg(user),
         "is_pic": is_pic(user),
+        "pic_users": User.objects.filter(groups__name="PIC"),
     })
 
 
@@ -812,14 +1019,14 @@ def request_detail(request, borang_type, request_id):
 def pengarah_dashboard(request):
     user = request.user
     if is_pengarah_bahagian(user):
-        scope = "bitg" if is_bitg(user) else "pb"
+        scope = "all"
     elif is_pic(user):
         scope = "pic"
     else:
         return redirect("home")
 
     return render(request, "list_requests.html", {
-        "page_title": "PAPAN KELULUSAN",
+        "page_title": "SEMAKAN PERMOHONAN",
         "scope": scope,
         **request_list_context(),
     })
@@ -849,20 +1056,20 @@ def approve_request(request, borang_type, request_id):
             return HttpResponseForbidden("Bukan bahagian anda")
         if action == "reject":
             log_status(data, "Tidak Disokong Oleh Pengarah Bahagian", user, sebab_tolak=sebab or "-")
-            send_notif("Permohonan Tidak Disokong", f"Permohonan ID {data.id} tidak disokong.\nSebab: {sebab}", [data.email])
+            notify(data, "pb_reject", "pemohon", [data.email], "Tidak Disokong Oleh Pengarah Bahagian", sebab=sebab or "-", changed_by=user)
         else:
             log_status(data, "Disokong Oleh Pengarah Bahagian", user)
-            send_notif("Permohonan Diluluskan (Bahagian)", f"Permohonan ID {data.id} telah disokong oleh Pengarah Bahagian.", [data.email])
-            send_notif("Permohonan Memerlukan Kelulusan BITG", f"ID: {data.id}\nPemohon: {data.namapemohon}\nSila login sistem untuk kelulusan.", bitg_emails())
+            notify(data, "pb_approve", "pemohon", [data.email], "Disokong Oleh Pengarah Bahagian", changed_by=user)
+            notify(data, "pb_approve", "bitg", bitg_emails(), "Disokong Oleh Pengarah Bahagian", changed_by=user)
 
     # BITG-level approval (Pengarah Bahagian dengan bahagian BITG)
     elif is_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
         if action == "reject":
             log_status(data, "Tidak Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan, sebab_tolak=sebab or "-")
-            send_notif("Permohonan Tidak Diluluskan (BITG)", f"Permohonan ID {data.id} tidak diluluskan oleh Pengarah BITG.\nSebab: {sebab}", [data.email])
+            notify(data, "bitg_reject", "pemohon", [data.email], "Tidak Mendapat Kelulusan Pengarah BITG", sebab=sebab or "-", ulasan=ulasan, changed_by=user)
         else:
             log_status(data, "Mendapat Kelulusan Pengarah BITG", user, ulasan=ulasan)
-            send_notif("Permohonan Diluluskan (BITG)", f"Permohonan ID {data.id} telah diluluskan oleh Pengarah BITG.\nUlasan: {ulasan or '-'}", [data.email])
+            notify(data, "bitg_approve", "pemohon", [data.email], "Mendapat Kelulusan Pengarah BITG", ulasan=ulasan, changed_by=user)
     else:
         return HttpResponseForbidden("Not allowed")
 
@@ -883,10 +1090,10 @@ def assign_pic(request, borang_type, request_id):
     if request.method == "POST":
         pic_id = request.POST.get("pic")
         if not pic_id:
-            return redirect("assign_pic_page")
+            return redirect("pengarah_dashboard")
         pic_user = User.objects.filter(id=pic_id).first()
         if not pic_user:
-            return redirect("assign_pic_page")
+            return redirect("pengarah_dashboard")
 
         # SERAHAN / PINJAMAN: BITG-level Pengarah assigns
         if data.borang_type == "SERAHAN" and is_bitg(user) and data.status == "Mendapat Kelulusan Pengarah BITG":
@@ -901,11 +1108,11 @@ def assign_pic(request, borang_type, request_id):
         else:
             return HttpResponseForbidden("Not allowed")
 
-        send_notif("Tugasan Baru Diterima", f"Anda telah ditugaskan untuk permohonan ID {data.id}.\nPemohon: {data.namapemohon}", [pic_user.email])
+        notify(data, "assign_pic", "pic", [pic_user.email], "Penugasan PIC", changed_by=user)
         if data.borang_type == "SERAHAN":
-            send_notif("PIC Telah Ditetapkan", f"Permohonan anda (ID {data.id}) telah diberikan kepada PIC.\nSila hantar data (emel/cetakan) kepada PIC untuk verifikasi.", [data.email])
+            notify(data, "assign_serah", "pemohon", [data.email], "Penugasan PIC", changed_by=user)
         else:
-            send_notif("PIC Telah Ditetapkan", f"Permohonan anda (ID {data.id}) diberikan kepada PIC untuk diproses.", [data.email])
+            notify(data, "assign_pinjam", "pemohon", [data.email], "Penugasan PIC", changed_by=user)
         return redirect("pengarah_dashboard")
 
     return HttpResponseForbidden("POST only")
@@ -942,7 +1149,7 @@ def pemohon_hantar_data(request, request_id):
 
     catatan = request.POST.get("catatan")
     log_status(obj, "Pemohon Hantar Data", request.user, ulasan=catatan)
-    send_notif("Data Dihantar", f"Pemohon telah menghantar data untuk permohonan ID {obj.id}.\nSila verifikasi.", [obj.pic.email] if obj.pic else [])
+    notify(obj, "hantar_data", "pic", [obj.pic.email] if obj.pic else [], "Pemohon Hantar Data", changed_by=request.user)
     return redirect("status")
 
 
@@ -967,20 +1174,16 @@ def verify_data(request, borang_type, request_id):
     if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Pemohon Hantar Data":
         if action == "reject":
             log_status(data, "Pembetulan Oleh Pemohon", user, sebab_tolak=sebab or "-")
-            send_notif(
-                "Pembetulan Diperlukan",
-                f"Data permohonan ID {data.id} perlu pembetulan.\nSebab: {sebab}\nSila login untuk mengedit dan menghantar semula.",
-                [data.email],
-            )
+            notify(data, "verify_reject", "pemohon", [data.email], "Pembetulan Oleh Pemohon", sebab=sebab or "-", changed_by=user)
         else:
             log_status(data, "Verifikasi Data", user)
-            send_notif("Verifikasi Data Disahkan", f"Verifikasi permohonan ID {data.id} selesai. Menunggu penerimaan data.", [data.email])
+            notify(data, "verify_ok", "pemohon", [data.email], "Verifikasi Data", changed_by=user)
 
     # SERAHAN: PIC sahkan penerimaan data -> selesai
     elif data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Verifikasi Data":
         log_status(data, "Sahkan Penerimaan Data", user)
         log_status(data, "Selesai", user)
-        send_notif("Serahan Data Selesai", f"Data permohonan ID {data.id} telah disahkan dan diterima.", [data.email])
+        notify(data, "serah_selesai", "pemohon", [data.email], "Selesai", changed_by=user)
 
     # PINJAMAN: PIC hantar data -> semakan oleh pemohon
     elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Penugasan PIC":
@@ -988,7 +1191,7 @@ def verify_data(request, borang_type, request_id):
         data.deadline = timezone.now() + timedelta(days=5)
         data.save()
         log_status(data, "PIC Hantar Data", user, ulasan=ulasan_pic)
-        send_notif("Data Sedia Untuk Semakan", f"Data permohonan ID {data.id} telah dihantar. Sila semak.", [data.email])
+        notify(data, "pic_hantar", "pemohon", [data.email], "PIC Hantar Data", ulasan=ulasan_pic, changed_by=user)
 
     # PINJAMAN: Pemohon semak data -> sahkan penerimaan (1 klik) / kembali kepada PIC
     elif data.borang_type == "PINJAMAN" and data.pemohon_id == user.id and data.status == "PIC Hantar Data":
@@ -996,13 +1199,13 @@ def verify_data(request, borang_type, request_id):
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
             log_status(data, "Penugasan PIC", user, sebab_tolak=sebab or "-")
-            send_notif("Pembetulan Diperlukan", f"Pemohon memerlukan pembetulan untuk permohonan ID {data.id}.\nSebab: {sebab}", [data.pic.email] if data.pic else [])
+            notify(data, "pinjam_reject", "pic", [data.pic.email] if data.pic else [], "Penugasan PIC", sebab=sebab or "-", changed_by=user)
         else:
             ulasan_pemohon = request.POST.get("ulasan")
             log_status(data, "Pemohon Semak Data", user, ulasan=ulasan_pemohon)
             log_status(data, "Pemohon Sahkan Penerimaan Data", user, ulasan=ulasan_pemohon)
             log_status(data, "Selesai", user)
-            send_notif("Pinjaman Disahkan", f"Pemohon telah mengesahkan penerimaan data permohonan ID {data.id}.", group_emails("PIC"))
+            notify(data, "pinjam_selesai", "pic_all", group_emails("PIC"), "Selesai", ulasan=ulasan_pemohon, changed_by=user)
     else:
         return HttpResponseForbidden("Not allowed")
 
@@ -1045,11 +1248,7 @@ def status_update(request, borang_type=None, request_id=None):
         obj = get_request_obj(req_bt, req_id)
         if obj:
             log_status(obj, new_status, request.user, ulasan=ulasan, sebab_tolak=sebab)
-            send_notif(
-                "Status Permohonan Dikemaskini",
-                f"Hi {obj.namapemohon},\n\nStatus permohonan anda telah dikemaskini.\n\nID: {obj.id}\nStatus Baru: {new_status}\n\nSila login sistem untuk semakan lanjut.",
-                [obj.email],
-            )
+            notify(obj, "manual_status", "pemohon", [obj.email], new_status, sebab=sebab, ulasan=ulasan, changed_by=request.user)
         return redirect("status_update", borang_type=req_bt, request_id=req_id)
 
     data = get_request_obj(borang_type, request_id) if request_id else None
@@ -1083,7 +1282,11 @@ def update_status(request, borang_type, request_id, new_status):
 # STATISTICS
 # =============================
 
+@login_required
 def statistics(request):
+    if not is_admin(request.user):
+        return redirect("home")
+
     from django.utils.timezone import now
     from datetime import datetime
 

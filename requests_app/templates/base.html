@@ -35,7 +35,7 @@
 
 
 {% for group in request.user.groups.all %}
-    {% if group.name == "PIC" or group.name == "Staff" %}
+    {% if group.name == "Staff" %}
         <a href="{% url 'status' %}">Status Permohonan</a>
     {% endif %}
 {% endfor %}
@@ -43,25 +43,22 @@
 {% for group in request.user.groups.all %}
     {% if group.name == "PIC" %}
         <a href="{% url 'upload_page' %}">Tugasan PIC</a>
+    {% endif %}
+{% endfor %}
+
+{% for group in request.user.groups.all %}
+    {% if group.name == "Admin" %}
         <a href="{% url 'statistics' %}">Statistik</a>
     {% endif %}
 {% endfor %}
 
-{% for group in request.user.groups.all %}
-    {% if group.name == "PIC" or group.name == "Admin" or group.name == "Pengarah Bahagian" %}
-        <a href="{% url 'admin_borang' %}">Semakan Borang</a>
-    {% endif %}
-{% endfor %}
+{% if not request.user.groups.all and request.user.is_superuser %}
+    <a href="{% url 'statistics' %}">Statistik</a>
+{% endif %}
 
 {% for group in request.user.groups.all %}
     {% if group.name == "Pengarah Bahagian" %}
-        <a href="{% url 'pengarah_dashboard' %}">Papan Kelulusan</a>
-    {% endif %}
-{% endfor %}
-
-{% for group in request.user.groups.all %}
-    {% if group.name == "Pengarah Bahagian" and request.user.profile.bahagian.nama == "BITG" %}
-        <a href="{% url 'assign_pic_page' %}">Penugasan PIC</a>
+        <a href="{% url 'pengarah_dashboard' %}">Semakan Permohonan</a>
     {% endif %}
 {% endfor %}
 

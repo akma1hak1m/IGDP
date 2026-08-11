@@ -7,7 +7,7 @@
 <div class="divider-line"></div>
 
 <div class="filter-row">
-    <input type="text" id="q" class="search-input" placeholder="Cari ID / Nama / Email...">
+    <input type="text" id="q" class="search-input" placeholder="Cari Nama / Emel...">
     <div class="filter-type">
         <label><input type="checkbox" name="type" value="SERAHAN" checked> Serahan</label>
         <label><input type="checkbox" name="type" value="PINJAMAN" checked> Pinjaman</label>
@@ -32,7 +32,7 @@
 <table class="req-table">
     <thead>
         <tr>
-            <th data-sort="id">ID</th>
+            <th>No</th>
             <th data-sort="borang_type">Jenis</th>
             <th data-sort="namapemohon">Pemohon</th>
             <th data-sort="bahagian">Bahagian</th>
@@ -86,6 +86,7 @@
 .detail-actions form { margin-bottom:10px; }
 .detail-actions textarea { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; resize:vertical; }
 .detail-actions .btn-approve, .detail-actions .btn-reject { margin-right:8px; }
+.detail-select { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; }
 </style>
 
 <script>
@@ -130,10 +131,10 @@ function renderRows(rows) {
         return;
     }
     tbody.innerHTML = "";
-    rows.forEach(r => {
+    rows.forEach((r, i) => {
         const tr = document.createElement("tr");
         tr.innerHTML =
-            '<td class="row-id">#' + esc(r.id) + '</td>' +
+            '<td class="row-id">' + ((state.page - 1) * state.per_page + i + 1) + '</td>' +
             '<td>' + badge(r.borang_type) + '</td>' +
             '<td>' + esc(r.namapemohon) + '<br><small class="pager-total">' + esc(r.email) + '</small></td>' +
             '<td>' + esc(r.bahagian || "-") + '</td>' +
