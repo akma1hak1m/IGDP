@@ -176,19 +176,19 @@ def request_base_segments(scope, user):
     if scope in ("pb", "bitg"):
         b = user_bahagian(user)
         segments = [
-            (SerahanRequest, SerahanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)),
-            (PinjamanRequest, PinjamanRequest.objects.filter(status="Borang Telah Dihantar", bahagian=b)),
+            (SerahanRequest, SerahanRequest.objects.filter(bahagian=b)),
+            (PinjamanRequest, PinjamanRequest.objects.filter(bahagian=b)),
         ]
         if scope == "bitg":
             segments += [
-                (SerahanRequest, SerahanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")),
-                (PinjamanRequest, PinjamanRequest.objects.filter(status="Disokong Oleh Pengarah Bahagian")),
+                (SerahanRequest, SerahanRequest.objects.all()),
+                (PinjamanRequest, PinjamanRequest.objects.all()),
             ]
         return segments
     if scope == "pic":
         return [
-            (SerahanRequest, SerahanRequest.objects.filter(pic=user, status__in=["Pemohon Hantar Data", "Verifikasi Data"])),
-            (PinjamanRequest, PinjamanRequest.objects.filter(pic=user, status="Penugasan PIC")),
+            (SerahanRequest, SerahanRequest.objects.filter(pic=user)),
+            (PinjamanRequest, PinjamanRequest.objects.filter(pic=user)),
         ]
     return []
 
@@ -882,7 +882,14 @@ def borang_pinjaman_edit(request, request_id):
 
 @login_required
 def status_view(request):
-    scope = "all" if is_reviewer(request.user) else "my"
+    if is_bitg(request.user):
+        scope = "bitg"
+    elif is_admin(request.user):
+        scope = "all"
+    elif is_pengarah_bahagian(request.user):
+        scope = "pb"
+    else:
+        scope = "my"
     return render(request, "list_requests.html", {
         "page_title": "STATUS PERMOHONAN DATA",
         "scope": scope,
@@ -896,7 +903,7 @@ def status_view(request):
 
 @login_required
 def admin_borang(request):
-    if not is_reviewer(request.user):
+    if not (is_admin(request.user) or is_bitg(request.user)):
         return redirect("home")
 
     return render(request, "list_requests.html", {
@@ -916,8 +923,8 @@ def requests_list(request):
     scope = request.GET.get("scope", "my")
     if scope not in {"my", "all", "pb", "bitg", "pic"}:
         scope = "my"
-    if scope == "all" and not is_reviewer(user):
-        scope = "my"
+    if scope == "all" and not (is_admin(user) or is_bitg(user)):
+        scope = "pb" if is_pengarah_bahagian(user) else "my"
     if scope in ("pb", "bitg") and not is_pengarah_bahagian(user):
         scope = "my"
     if scope == "bitg" and not is_bitg(user):
@@ -951,6 +958,9 @@ def requests_list(request):
             row["bahagian"] = row.pop("bahagian__nama")
             row["negeri"] = row.pop("negeri__nama")
             recs.append(row)
+
+    seen = set()
+    recs = [r for r in recs if not ((r["bt"], r["id"]) in seen or seen.add((r["bt"], r["id"])))]
 
     sort = request.GET.get("sort", "created_at")
     order = request.GET.get("order", "desc")
@@ -997,7 +1007,13 @@ def request_detail(request, borang_type, request_id):
         return HttpResponseNotFound("Not found")
 
     user = request.user
-    allowed = is_reviewer(user) or obj.pemohon_id == user.id or (obj.pic_id and obj.pic_id == user.id)
+    allowed = (
+        is_admin(user)
+        or is_bitg(user)
+        or obj.pemohon_id == user.id
+        or (obj.pic_id and obj.pic_id == user.id)
+        or (is_pengarah_bahagian(user) and obj.bahagian_id and user_bahagian(user) and user_bahagian(user).id == obj.bahagian_id)
+    )
     if not allowed:
         return HttpResponseForbidden("Tiada akses")
 
@@ -1018,8 +1034,10 @@ def request_detail(request, borang_type, request_id):
 @login_required
 def pengarah_dashboard(request):
     user = request.user
-    if is_pengarah_bahagian(user):
-        scope = "all"
+    if is_bitg(user):
+        scope = "bitg"
+    elif is_pengarah_bahagian(user):
+        scope = "pb"
     elif is_pic(user):
         scope = "pic"
     else:
@@ -1284,7 +1302,7 @@ def update_status(request, borang_type, request_id, new_status):
 
 @login_required
 def statistics(request):
-    if not is_admin(request.user):
+    if not (is_admin(request.user) or is_bitg(request.user)):
         return redirect("home")
 
     from django.utils.timezone import now
@@ -1300,6 +1318,7 @@ def statistics(request):
     logins = LoginLog.objects.filter(login_time__month=month, login_time__year=year)
     total_login = logins.count()
     unique_users = logins.values("user").distinct().count()
+    total_users = User.objects.filter(is_active=True).count()
 
     total_serahan = SerahanRequest.objects.filter(created_at__month=month, created_at__year=year).count()
     total_pinjaman = PinjamanRequest.objects.filter(created_at__month=month, created_at__year=year).count()
@@ -1346,6 +1365,7 @@ def statistics(request):
         "years": range(current_year, current_year - 5, -1),
         "total_login": total_login,
         "unique_users": unique_users,
+        "total_users": total_users,
         "total_serahan": total_serahan,
         "total_pinjaman": total_pinjaman,
         "top_kawasan": kawasan_list(kawasan_counter),

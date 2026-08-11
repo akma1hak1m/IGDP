@@ -52,13 +52,12 @@
     {% endif %}
 {% endfor %}
 
-{% if not request.user.groups.all and request.user.is_superuser %}
-    <a href="{% url 'statistics' %}">Statistik</a>
-{% endif %}
-
 {% for group in request.user.groups.all %}
     {% if group.name == "Pengarah Bahagian" %}
         <a href="{% url 'pengarah_dashboard' %}">Semakan Permohonan</a>
+        {% if request.user.profile.bahagian.nama == "BITG" %}
+            <a href="{% url 'statistics' %}">Statistik</a>
+        {% endif %}
     {% endif %}
 {% endfor %}
 

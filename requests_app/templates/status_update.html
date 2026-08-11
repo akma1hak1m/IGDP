@@ -50,7 +50,7 @@
 
                         <select name="status" class="modern-select">
                             {% for opt in options %}
-                            <option value="{{ opt }}" {% if opt == data.status %}selected{% endif %}>{{ opt }}</option>
+                            <option value="{{ opt }}" {% if opt == data.status %}selected{% endif %}>{% if opt == "Sahkan Penerimaan Data" %}PIC Sahkan Penerimaan Data{% else %}{{ opt }}{% endif %}</option>
                             {% endfor %}
                         </select>
 

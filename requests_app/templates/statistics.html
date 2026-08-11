@@ -2,197 +2,382 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="glass-card form-card">
+<div class="glass-card form-card stat-page">
 
-<h2 class="flow-title">STATISTIK</h2>
+<h2 class="flow-title">STATISTIK SISTEM</h2>
 
-<p style="text-align:center;margin-bottom:25px;">
-Laporan Bulanan Bagi Bulan {{ month }} / {{ year }}
+<p class="stat-subtitle">
+Laporan Bulanan &mdash; {{ month }} / {{ year }}
 </p>
 
-<form method="get" class="filter-row">
+<form method="get" class="stat-filters">
+    <select name="month" class="stat-select">
+        <option value="1" {% if month == 1 %}selected{% endif %}>Januari</option>
+        <option value="2" {% if month == 2 %}selected{% endif %}>Februari</option>
+        <option value="3" {% if month == 3 %}selected{% endif %}>Mac</option>
+        <option value="4" {% if month == 4 %}selected{% endif %}>April</option>
+        <option value="5" {% if month == 5 %}selected{% endif %}>Mei</option>
+        <option value="6" {% if month == 6 %}selected{% endif %}>Jun</option>
+        <option value="7" {% if month == 7 %}selected{% endif %}>Julai</option>
+        <option value="8" {% if month == 8 %}selected{% endif %}>Ogos</option>
+        <option value="9" {% if month == 9 %}selected{% endif %}>September</option>
+        <option value="10" {% if month == 10 %}selected{% endif %}>Oktober</option>
+        <option value="11" {% if month == 11 %}selected{% endif %}>November</option>
+        <option value="12" {% if month == 12 %}selected{% endif %}>Disember</option>
+    </select>
 
-<select name="month">
-<option value="1">Januari</option>
-<option value="2">Februari</option>
-<option value="3">Mac</option>
-<option value="4">April</option>
-<option value="5">Mei</option>
-<option value="6">Jun</option>
-<option value="7">Julai</option>
-<option value="8">Ogos</option>
-<option value="9">September</option>
-<option value="10">Oktober</option>
-<option value="11">November</option>
-<option value="12">Disember</option>
-</select>
+    <select name="year" class="stat-select">
+        {% for y in years %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>
+                {{ y }}
+            </option>
+        {% endfor %}
+    </select>
 
-<select name="year">
-    {% for y in years %}
-        <option value="{{ y }}" {% if y == year %}selected{% endif %}>
-            {{ y }}
-        </option>
-    {% endfor %}
-</select>
-
-<button type="submit" class="submit-btn">
-Jana Laporan
-</button>
-
+    <button type="submit" class="stat-btn">Jana Laporan</button>
 </form>
 
-<div class="stats-wrapper">
+<!-- SUMMARY CARDS -->
+<div class="stat-cards">
 
-<!-- SUMMARY -->
-<div class="stats-grid">
+    <div class="stat-card c-blue">
+        <div>
+            <h3>Jumlah Log Masuk</h3>
+            <p>{{ total_login }}</p>
+            <small>Log masuk sepanjang bulan ini</small>
+        </div>
+    </div>
 
-<div class="stat-box">
-<h3>Jumlah Log Masuk</h3>
-<p>{{ total_login }}</p>
+    <div class="stat-card c-green">
+        <div>
+            <h3>Jumlah Pengguna Berdaftar</h3>
+            <p>{{ total_users }}</p>
+            <small>Akaun aktif dalam sistem</small>
+        </div>
+    </div>
+
+    <div class="stat-card c-cyan">
+        <div>
+            <h3>Borang Serahan</h3>
+            <p>{{ total_serahan }}</p>
+            <small>Permohonan bulan ini</small>
+        </div>
+    </div>
+
+    <div class="stat-card c-pink">
+        <div>
+            <h3>Borang Pinjaman</h3>
+            <p>{{ total_pinjaman }}</p>
+            <small>Permohonan bulan ini</small>
+        </div>
+    </div>
+
 </div>
-
-<div class="stat-box">
-<h3>Jumlah Pengguna Unik</h3>
-<p>{{ unique_users }}</p>
-</div>
-
-<div class="stat-box">
-<h3>Borang Serahan</h3>
-<p>{{ total_serahan }}</p>
-</div>
-
-<div class="stat-box">
-<h3>Borang Pinjaman</h3>
-<p>{{ total_pinjaman }}</p>
-</div>
-
-</div>
-
 
 <!-- CHART -->
-<div class="chart-box">
+<div class="stat-chart">
     <h3 class="section-title">Jenis Permohonan</h3>
-
-    <div class="chart-canvas-container">
+    <div class="stat-chart-canvas">
         <canvas id="requestChart"></canvas>
     </div>
 </div>
 
+<!-- DETAIL TABLES -->
+<div class="stat-columns">
 
-<div class="stats-sections">
+    <div class="stat-col">
 
-    <!-- LEFT COLUMN -->
-    <div class="stats-column">
-
-        <!-- Kawasan -->
         <div class="data-card">
-            <h3 class="section-title">1. Kawasan</h3>
-
+            <h3 class="section-title">1. Kawasan Paling Kerap</h3>
             <table class="report-table">
-                <tr>
-                    <th>Negeri</th>
-                    <th>Daerah</th>
-                    <th>Mukim</th>
-                    <th>Total</th>
-                </tr>
-
+                <thead>
+                    <tr><th>#</th><th>Negeri</th><th>Daerah</th><th>Mukim</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody>
                 {% for item in top_kawasan %}
-                <tr>
-                    <td>{{ item.negeri }}</td>
-                    <td>{{ item.daerah }}</td>
-                    <td>{{ item.mukim }}</td>
-                    <td>{{ item.total }}</td>
-                </tr>
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td>{{ item.negeri }}</td>
+                        <td>{{ item.daerah }}</td>
+                        <td>{{ item.mukim }}</td>
+                        <td class="num">{{ item.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="empty-text">Tiada rekod</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
 
-        <!-- Komponen -->
         <div class="data-card">
             <h3 class="section-title">2. Komponen Data</h3>
-
             <table class="report-table">
-                <tr>
-                    <th>Komponen Data</th>
-                    <th>Jumlah</th>
-                </tr>
-
+                <thead>
+                    <tr><th>#</th><th>Komponen Data</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody>
                 {% for item in top_komponen %}
-                <tr>
-                    <td>{{ item.komponen_data }}</td>
-                    <td>{{ item.total }}</td>
-                </tr>
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td>{{ item.komponen_data }}</td>
+                        <td class="num">{{ item.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="empty-text">Tiada rekod</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
 
     </div>
 
+    <div class="stat-col">
 
-
-    <!-- RIGHT COLUMN -->
-    <div class="stats-column">
-
-        <!-- Meta -->
         <div class="data-card">
             <h3 class="section-title">3. Meta Data</h3>
-
             <table class="report-table">
-                <tr>
-                    <th>Meta Data</th>
-                    <th>Jumlah</th>
-                </tr>
-
+                <thead>
+                    <tr><th>#</th><th>Meta Data</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody>
                 {% for item in top_metadata %}
-                <tr>
-                    <td>{{ item.meta_data }}</td>
-                    <td>{{ item.total }}</td>
-                </tr>
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td>{{ item.meta_data }}</td>
+                        <td class="num">{{ item.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="empty-text">Tiada rekod</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
 
-        <!-- Jenis -->
         <div class="data-card">
             <h3 class="section-title">4. Jenis Data</h3>
-
             <table class="report-table">
-                <tr>
-                    <th>Jenis Data</th>
-                    <th>Jumlah</th>
-                </tr>
-
+                <thead>
+                    <tr><th>#</th><th>Jenis Data</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody>
                 {% for item in top_jenis %}
-                <tr>
-                    <td>{{ item.jenis_data }}</td>
-                    <td>{{ item.total }}</td>
-                </tr>
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td>{{ item.jenis_data }}</td>
+                        <td class="num">{{ item.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="empty-text">Tiada rekod</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
 
-        <!-- Klasifikasi -->
         <div class="data-card">
             <h3 class="section-title">5. Klasifikasi Data</h3>
-
             <table class="report-table">
-                <tr>
-                    <th>Klasifikasi</th>
-                    <th>Jumlah</th>
-                </tr>
-
+                <thead>
+                    <tr><th>#</th><th>Klasifikasi</th><th>Jumlah</th></tr>
+                </thead>
+                <tbody>
                 {% for item in top_klasifikasi %}
-                <tr>
-                    <td>{{ item.klasifikasidata }}</td>
-                    <td>{{ item.total }}</td>
-                </tr>
+                    <tr>
+                        <td class="rank">{{ forloop.counter }}</td>
+                        <td>{{ item.klasifikasidata }}</td>
+                        <td class="num">{{ item.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="empty-text">Tiada rekod</td></tr>
                 {% endfor %}
+                </tbody>
             </table>
         </div>
 
     </div>
 
 </div>
+
+</div>
+
+<style>
+.stat-page { padding-bottom: 50px; }
+
+.stat-subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.6);
+    font-size: 15px;
+    letter-spacing: 1px;
+    margin-bottom: 26px;
+}
+
+.stat-filters {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 34px;
+}
+
+.stat-select {
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #0f2233;
+    color: #e3f2fd;
+    border: 1px solid rgba(0,234,255,0.25);
+    font-size: 14px;
+    min-width: 150px;
+    outline: none;
+    cursor: pointer;
+}
+
+.stat-select:focus { border-color: var(--primary); box-shadow: 0 0 12px rgba(0,240,255,0.25); }
+
+.stat-btn {
+    padding: 10px 26px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, #1a73e8, #00c6ff);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.stat-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,198,255,0.35); }
+
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 34px;
+}
+
+.stat-card {
+    position: relative;
+    overflow: hidden;
+    padding: 20px 24px;
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.10);
+    backdrop-filter: blur(6px);
+    transition: transform .15s ease, border-color .15s ease;
+}
+
+.stat-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+}
+
+.stat-card.c-blue::before { background: #35b6ff; }
+.stat-card.c-green::before { background: #40de7c; }
+.stat-card.c-cyan::before { background: #00eaff; }
+.stat-card.c-pink::before { background: #ff5bcf; }
+
+.stat-card:hover { transform: translateY(-3px); border-color: rgba(0,234,255,0.45); }
+
+.stat-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 1px;
+    margin: 0 0 4px;
+    text-transform: uppercase;
+}
+
+.stat-card p {
+    font-size: 34px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--primary), #ffffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-card small { display: block; color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 4px; }
+
+.stat-chart {
+    margin-bottom: 34px;
+    padding: 26px;
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.10);
+}
+
+.stat-chart .section-title { text-align: center; }
+
+.stat-chart-canvas {
+    height: 340px;
+    max-width: 520px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.stat-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+@media (max-width: 900px) { .stat-columns { grid-template-columns: 1fr; } }
+
+.stat-col { display: flex; flex-direction: column; gap: 18px; }
+
+.data-card {
+    padding: 20px 22px;
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.10);
+}
+
+.data-card .section-title {
+    font-size: 15px;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.report-table th {
+    text-align: left;
+    padding: 9px 10px;
+    color: #8ab4f8;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.report-table td {
+    padding: 9px 10px;
+    color: #e3f2fd;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.report-table tbody tr { transition: background .12s ease; }
+
+.report-table tbody tr:hover { background: rgba(255,255,255,0.05); }
+
+.report-table .num { text-align: right; font-weight: 700; color: #00e0ff; }
+
+.report-table .rank {
+    color: rgba(255,255,255,0.35);
+    font-weight: 600;
+    width: 34px;
+}
+</style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -215,7 +400,7 @@ new Chart(ctx, {
 
             borderWidth: 0,
 
-            radius: '88%',   // 🔥 THIS ONE
+            radius: '88%',
             cutout: '58%'
         }]
     },
@@ -226,16 +411,16 @@ new Chart(ctx, {
 
         plugins: {
             legend: {
-                position: 'top',
+                position: 'bottom',
 
                 labels: {
                     color: 'white',
 
-                    padding: 30,
+                    padding: 24,
 
                     font: {
-                        size: 22,
-                        weight:'bold'
+                        size: 14,
+                        weight: 'bold'
                     }
                 }
             }

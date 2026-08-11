@@ -2453,6 +2453,16 @@ padding-right:8px;
 position:relative;
 padding-bottom:16px;
 }
+.tl-item::before{
+	content:'';
+	position:absolute;
+	left:-16px;
+	top:0;
+	bottom:-1px;
+	width:2px;
+	background:rgba(0,229,255,0.55);
+	z-index:0;
+}
 .tl-item:last-child{
 padding-bottom:0;
 }
@@ -2473,13 +2483,16 @@ padding-bottom:0;
 	box-shadow:0 0 0 4px rgba(0,229,255,.25);
 }
 .tl-item.current .tl-status{
-	color:#00e5ff;
+	text-shadow:0 0 8px rgba(0,229,255,.5);
 }
 .tl-status{
 	font-weight:bold;
 	font-size:13px;
 	color:#ffffff;
 }
+.tl-status.tl-done{ color:#4ade80; }
+.tl-status.tl-ongoing{ color:#fb923c; }
+.tl-status.tl-reject{ color:#ef4444; }
 .tl-meta{
 	font-size:11px;
 	color:rgba(255,255,255,0.55);

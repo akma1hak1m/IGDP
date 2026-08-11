@@ -16,13 +16,18 @@ Usage:
     <div class="tl-item {% if forloop.first %}current{% endif %}">
         <div class="tl-marker"></div>
         <div class="tl-content">
-            <div class="tl-status">{{ log.status }}</div>
-            <div class="tl-meta">{{ log.changed_at|date:"d/m/Y H:i" }} &middot; {{ log.changed_by.username }}{% if log.status == "Mendapat Kelulusan Pengarah BITG" or log.status == "Tidak Mendapat Kelulusan Pengarah BITG" %} (Pengarah BITG){% else %}{% if log.changed_by.groups.all %} ({% for g in log.changed_by.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}{% endif %}</div>
-            {% if log.ulasan %}
-            <div class="tl-note">Ulasan: {{ log.ulasan }}</div>
+            {% if log.status == "Tidak Disokong Oleh Pengarah Bahagian" or log.status == "Tidak Mendapat Kelulusan Pengarah BITG" %}
+            <div class="tl-status tl-reject">{% if log.status == "Sahkan Penerimaan Data" %}PIC Sahkan Penerimaan Data{% else %}{{ log.status }}{% endif %}</div>
+            {% elif forloop.first %}
+            <div class="tl-status tl-ongoing">{% if log.status == "Sahkan Penerimaan Data" %}PIC Sahkan Penerimaan Data{% else %}{{ log.status }}{% endif %}</div>
+            {% else %}
+            <div class="tl-status tl-done">{% if log.status == "Sahkan Penerimaan Data" %}PIC Sahkan Penerimaan Data{% else %}{{ log.status }}{% endif %}</div>
             {% endif %}
-            {% if log.status == "Penugasan PIC" and r and r.pic %}
-            <div class="tl-note">PIC: {{ r.pic.username }}</div>
+            <div class="tl-meta">{{ log.changed_at|date:"d/m/Y H:i" }} &middot; {{ log.changed_by.username }}{% if log.status == "Mendapat Kelulusan Pengarah BITG" or log.status == "Tidak Mendapat Kelulusan Pengarah BITG" or log.changed_by.profile.bahagian.nama == "BITG" %} (Pengarah BITG){% else %}{% if log.changed_by.groups.all %} ({% for g in log.changed_by.groups.all %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}{% endif %}</div>
+            {% if log.status == "Penugasan PIC" and log.ulasan %}
+            <div class="tl-note">{{ log.ulasan }}</div>
+            {% elif log.ulasan %}
+            <div class="tl-note">Ulasan: {{ log.ulasan }}</div>
             {% endif %}
             {% if log.sebab_tolak %}
             <div class="tl-note reject">Sebab: {{ log.sebab_tolak }}</div>

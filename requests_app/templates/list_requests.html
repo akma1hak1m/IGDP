@@ -14,16 +14,18 @@
     </div>
     <select id="f-status">
         <option value="">Semua Status</option>
-        {% for s in status_options %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        {% for s in status_options %}<option value="{{ s }}">{% if s == "Sahkan Penerimaan Data" %}PIC Sahkan Penerimaan Data{% else %}{{ s }}{% endif %}</option>{% endfor %}
     </select>
     <select id="f-negeri">
         <option value="">Semua Negeri</option>
         {% for n in negeri_options %}<option value="{{ n.nama }}">{{ n.nama }}</option>{% endfor %}
     </select>
+    {% if scope != "my" and scope != "pb" %}
     <select id="f-bahagian">
         <option value="">Semua Bahagian</option>
         {% for b in bahagian_options %}<option value="{{ b.nama }}">{{ b.nama }}</option>{% endfor %}
     </select>
+    {% endif %}
     <select id="f-perpage">
         {% for n in per_page_options %}<option value="{{ n }}" {% if forloop.counter == 2 %}selected{% endif %}>{{ n }} / muka</option>{% endfor %}
     </select>
@@ -228,7 +230,7 @@ $("q").addEventListener("input", function () {
 });
 $("f-status").addEventListener("change", function () { state.status = this.value; state.page = 1; loadRows(); });
 $("f-negeri").addEventListener("change", function () { state.negeri = this.value; state.page = 1; loadRows(); });
-$("f-bahagian").addEventListener("change", function () { state.bahagian = this.value; state.page = 1; loadRows(); });
+{% if scope != "my" and scope != "pb" %}$("f-bahagian").addEventListener("change", function () { state.bahagian = this.value; state.page = 1; loadRows(); });{% endif %}
 $("f-perpage").addEventListener("change", function () { state.per_page = parseInt(this.value, 10); state.page = 1; loadRows(); });
 document.querySelectorAll('input[name="type"]').forEach(function (cb) {
     cb.addEventListener("change", function () {
