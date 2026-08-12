@@ -304,7 +304,7 @@ class FlowTestBase(TestCase):
 
         self.verify(s, self.pic, "reject", sebab_tolak="Data tidak lengkap")
         subjects = [m.subject for m in mail.outbox]
-        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] Permohonan SERAHAN DATA") for sub in subjects))
+        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] PERMOHONAN SERAHAN DATA") for sub in subjects))
         bodies = " ".join(m.body for m in mail.outbox)
         self.assertIn("pembetulan", bodies.lower())
         tos = [email for m in mail.outbox for email in m.to]
@@ -563,7 +563,7 @@ class FlowTestBase(TestCase):
         _, s = self.submit_serah()
         subjects = [m.subject for m in mail.outbox]
         self.assertEqual(len(mail.outbox), 2)
-        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] Permohonan SERAHAN DATA") for sub in subjects))
+        self.assertTrue(all(sub.startswith("[TINDAKAN DIPERLUKAN] PERMOHONAN SERAHAN DATA") for sub in subjects))
         bodies = " ".join(m.body for m in mail.outbox)
         self.assertIn("Borang Telah Dihantar", bodies)
         self.assertIn("Pengarah Bahagian", bodies)

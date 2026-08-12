@@ -14,6 +14,7 @@
     {% if is_pengarah_bahagian and r.status == "Borang Telah Dihantar" and request.user.profile.bahagian == r.bahagian %}
     <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
         {% csrf_token %}
+        <textarea name="ulasan" placeholder="Ulasan (sokongan)"></textarea>
         <textarea name="sebab_tolak" placeholder="Sebab tidak disokong (jika perlu)"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Sokong</button>
         <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Sokong</button>

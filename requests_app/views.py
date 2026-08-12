@@ -69,6 +69,23 @@ PINJAMAN_REJECT = [
     "Tidak Mendapat Kelulusan Pengarah BITG",
 ]
 
+SUBJECT_STEP = {
+    "Borang Telah Dihantar": "PERMOHONAN",
+    "Tidak Disokong Oleh Pengarah Bahagian": "SOKONGAN PERMOHONAN",
+    "Disokong Oleh Pengarah Bahagian": "SOKONGAN PERMOHONAN",
+    "Tidak Mendapat Kelulusan Pengarah BITG": "KELULUSAN PERMOHONAN",
+    "Mendapat Kelulusan Pengarah BITG": "KELULUSAN PERMOHONAN",
+    "Penugasan PIC": "PENUGASAN PIC",
+    "Pemohon Hantar Data": "PENGHANTARAN DATA",
+    "PIC Hantar Data": "PENGHANTARAN DATA",
+    "Pembetulan Oleh Pemohon": "PENGHANTARAN DATA",
+    "Pemohon Semak Data": "VERIFIKASI DATA",
+    "Verifikasi Data": "VERIFIKASI DATA",
+    "Sahkan Penerimaan Data": "PENGESAHAN PENERIMAAN DATA",
+    "Pemohon Sahkan Penerimaan Data": "PENGESAHAN PENERIMAAN DATA",
+    "Selesai": "SELESAI",
+}
+
 
 # =============================
 # HELPERS
@@ -289,10 +306,16 @@ ACTION_TEXT = {
             "Permohonan menunggu penugasan PIC oleh Pengarah BITG.",
         ),
     },
-    "assign_pic": {
+    "assign_pic_serah": {
         "pic": (
             "Sila ambil tindakan terhadap tugasan yang telah diberikan.",
-            "SERAHAN: Menunggu pemohon menghantar data. PINJAMAN: Sediakan dan hantar data kepada pemohon.",
+            "Serahan: menunggu pemohon menghantar data kepada anda untuk verifikasi.",
+        ),
+    },
+    "assign_pic_pinjam": {
+        "pic": (
+            "Sila ambil tindakan terhadap tugasan yang telah diberikan.",
+            "Pinjaman: sila sediakan dan hantar data kepada pemohon.",
         ),
     },
     "assign_serah": {
@@ -373,24 +396,8 @@ def step_label(borang_type, status):
     return "-"
 
 
-def signature_block(user):
-    name = user.get_full_name() or user.username
-    profile = getattr(user, "profile", None)
-    bahagian = profile.bahagian.nama if profile and profile.bahagian_id else "-"
-    phone = profile.phone if profile and profile.phone else "-"
-    email = user.email or settings.DEFAULT_FROM_EMAIL
-    return (
-        f"{name}\n"
-        f"{role_label(user)}\n"
-        f"{bahagian}\n"
-        f"AGENSI ANGKASA MALAYSIA (MYSA)\n"
-        f"No. Telefon: {phone}\n"
-        f"Emel: {email}"
-    )
-
-
 def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=None, changed_by=None):
-    """Send formalised notification email for a request action."""
+    """Send formalised HTML notification email for a request action."""
     if not recipients:
         return
 
@@ -402,85 +409,150 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
     tarikh_status = timezone.localtime().strftime("%d/%m/%Y %H:%M")
     data_dipohon = (obj.komponen_data or "-").strip()[:120]
     actor_name = actor.get_full_name() or actor.username if actor else "-"
-    actor_line = f"{actor_name} ({role_label(actor)})" if actor else "-"
+    if actor:
+        role = "Pengarah BITG" if is_bitg(actor) else role_label(actor)
+        actor_line = f"{actor_name} ({role})"
+    else:
+        actor_line = "-"
+    bahagian = obj.bahagian.nama if obj.bahagian_id else "-"
 
-    parts = [
-        "Assalamualaikum dan Salam Sejahtera,",
-        "",
-        "YBhg. Datuk/Dato'/Tuan/Puan,",
-        "",
-        f"PERMOHONAN {jenis} – {obj.id}",
-        "",
-        "Dengan hormatnya perkara di atas adalah dirujuk.",
-        "",
-        "Untuk makluman, permohonan berikut telah dikemukakan melalui Sistem Permohonan Data untuk tindakan dan perhatian pihak YBhg. Datuk/Dato'/Tuan/Puan.",
-        "",
-        "MAKLUMAT PERMOHONAN",
-        "--------------------------------------------------",
-        f"No. Permohonan     : {obj.id}",
-        f"Jenis Permohonan   : {jenis}",
-        f"Nama Pemohon       : {obj.namapemohon or '-'}",
-        f"Agensi/Bahagian    : {obj.bahagian.nama if obj.bahagian_id else '-'}",
-        f"Tarikh Permohonan  : {tarikh_permohonan}",
-        f"Data Dipohon       : {data_dipohon}",
-        "--------------------------------------------------",
-        "",
-        "STATUS PERMOHONAN",
-        "--------------------------------------------------",
-        f"Status Semasa      : {status}",
-        f"Peringkat          : {step_label(obj.borang_type, status)}",
-        f"Tarikh Status      : {tarikh_status}",
-        f"Tindakan Oleh      : {actor_line}",
-        "--------------------------------------------------",
-        "",
-        "TINDAKAN DIPERLUKAN",
-        "--------------------------------------------------",
-        tindakan,
-        "",
-    ]
+    TAB = "background:#eceff1;font-weight:bold;padding:8px 14px;border:1px solid #d7dde1;white-space:nowrap;"
+    TAV = "background:#ffffff;padding:8px 14px;border:1px solid #d7dde1;"
 
+    def row(label, value, highlight=False):
+        vstyle = (
+            "background:#e8f5e9;color:#1b5e20;font-weight:bold;padding:8px 14px;"
+            "border:1px solid #c8e6c9;" if highlight else TAV
+        )
+        return f'<tr><td style="{TAB}">{label}</td><td style="{vstyle}">{value}</td></tr>'
+
+    info_rows = "".join([
+        row("No. Permohonan", f"<b>{obj.id}</b>"),
+        row("Jenis Permohonan", jenis),
+        row("Nama Pemohon", obj.namapemohon or "-"),
+        row("Agensi/Bahagian", bahagian),
+        row("Tarikh Permohonan", tarikh_permohonan),
+        row("Data Dipohon", data_dipohon),
+    ])
+
+    status_rows = "".join([
+        row("Status Semasa", status, highlight=True),
+        row("Peringkat", step_label(obj.borang_type, status)),
+        row("Tarikh Status", tarikh_status),
+        row("Tindakan Oleh", actor_line),
+    ])
+
+    def section(title, rows):
+        return (
+            f'<h3 style="margin:26px 0 10px;color:#0b3d5c;font-size:13px;letter-spacing:1px;">&#9679; {title}</h3>'
+            f'<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;max-width:640px;'
+            f'font-family:Arial,sans-serif;font-size:13px;">{rows}</table>'
+        )
+
+    def heading(title, special=False):
+        if special:
+            return (
+                f'<h3 style="margin:30px 0 10px;display:inline-block;padding:8px 18px;'
+                f'background:#f59e0b;color:#ffffff;font-size:13px;letter-spacing:1px;'
+                f'border-radius:6px;box-shadow:0 2px 8px rgba(245,158,11,.4);">&#9679; {title}</h3>'
+            )
+        return f'<h3 style="margin:26px 0 10px;color:#0b3d5c;font-size:13px;letter-spacing:1px;">&#9679; {title}</h3>'
+
+    def para(text):
+        return (
+            f'<p style="margin:0 0 4px;padding:10px 14px;background:#f6f8fa;border:1px solid #e1e6ea;'
+            f'border-radius:6px;color:#1f2d3d;">{text}</p>'
+        )
+
+    def action_para(text):
+        return (
+            f'<p style="margin:0 0 4px;padding:12px 14px;background:#fff7e6;border:1px solid #f0c674;'
+            f'border-left:5px solid #f59e0b;border-radius:6px;color:#7c4d00;font-weight:bold;">{text}</p>'
+        )
+
+    ulasan_block = ""
     if sebab or ulasan:
         lines = []
         if sebab:
-            lines.append(f"Sebab   : {sebab}")
+            lines.append(f"Sebab : {sebab}")
         if ulasan:
-            lines.append(f"Ulasan  : {ulasan}")
-        parts += [
-            "ULASAN / SEBAB",
-            "--------------------------------------------------",
-            "\n".join(lines),
-            "--------------------------------------------------",
-            "",
-        ]
+            lines.append(f"Ulasan: {ulasan}")
+        ulasan_block = heading("ULASAN / SEBAB") + "".join(para(l) for l in lines)
 
-    parts += [
-        "TINDAKAN SETERUSNYA",
-        "--------------------------------------------------",
-        seterusnya,
-        "--------------------------------------------------",
-        "",
-        "Untuk makluman, pihak YBhg. Datuk/Dato'/Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut.",
-        "",
-        "Pautan Sistem:",
-        SYSTEM_URL,
-        "",
-        "Kerjasama dan tindakan pihak YBhg. Datuk/Dato'/Tuan/Puan berhubung perkara ini amat dihargai.",
-        "",
-        "Sekian, terima kasih.",
-        "",
-        '"BERKHIDMAT UNTUK NEGARA"',
-        "",
-        "Yang benar,",
-        "",
-        signature_block(actor) if actor else f"-",
-    ]
+    html = (
+        '<div style="font-family:Arial,\'Segoe UI\',sans-serif;color:#1f2d3d;font-size:14px;line-height:1.6;">'
+        "<p>Assalamualaikum dan Salam Sejahtera,</p>"
+        "<p>Tuan/Puan,</p>"
+        f"<p><b>PERMOHONAN {jenis}</b></p>"
+        "<p>Dengan hormatnya perkara di atas adalah dirujuk.</p>"
+        "<p>Untuk makluman, permohonan berikut telah dikemukakan melalui Sistem Data Geospatial Bersepadu untuk tindakan dan perhatian pihak Tuan/Puan:</p>"
+        f"{section('MAKLUMAT PERMOHONAN', info_rows)}"
+        f"{section('STATUS PERMOHONAN', status_rows)}"
+        f"{heading('TINDAKAN DIPERLUKAN', special=True)}"
+        f"{action_para(tindakan)}"
+        f"{ulasan_block}"
+        f"{heading('TINDAKAN SETERUSNYA')}"
+        f"{para(seterusnya)}"
+        "<p>Untuk makluman, pihak Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut melalui pautan: "
+        f'<a href="{SYSTEM_URL}">{SYSTEM_URL}</a></p>'
+        "<p>Kerjasama dan tindakan pihak Tuan/Puan berhubung perkara ini amat dihargai.</p>"
+        "<p>Sekian, terima kasih.</p>"
+        '<p style="margin:34px 0 4px;font-weight:bold;">"BERKHIDMAT UNTUK NEGARA"</p>'
+        "<p>Yang benar,<br>Admin Sistem Data Geospatial Bersepadu</p>"
+        "</div>"
+    )
 
-    subject = f"[TINDAKAN DIPERLUKAN] Permohonan {jenis} – {obj.id}"
+    txt = (
+        "Assalamualaikum dan Salam Sejahtera,\n"
+        "\n"
+        "Tuan/Puan,\n"
+        "\n"
+        f"PERMOHONAN {jenis}\n"
+        "\n"
+        "Dengan hormatnya perkara di atas adalah dirujuk.\n"
+        "\n"
+        "Untuk makluman, permohonan berikut telah dikemukakan melalui Sistem Data Geospatial Bersepadu untuk tindakan dan perhatian pihak Tuan/Puan:\n"
+        "\n"
+        "MAKLUMAT PERMOHONAN\n"
+        f"No. Permohonan     : {obj.id}\n"
+        f"Jenis Permohonan   : {jenis}\n"
+        f"Nama Pemohon       : {obj.namapemohon or '-'}\n"
+        f"Agensi/Bahagian    : {bahagian}\n"
+        f"Tarikh Permohonan  : {tarikh_permohonan}\n"
+        f"Data Dipohon       : {data_dipohon}\n"
+        "\n"
+        "STATUS PERMOHONAN\n"
+        f"Status Semasa      : {status}\n"
+        f"Peringkat          : {step_label(obj.borang_type, status)}\n"
+        f"Tarikh Status      : {tarikh_status}\n"
+        f"Tindakan Oleh      : {actor_line}\n"
+        "\n"
+        "TINDAKAN DIPERLUKAN\n"
+        f"{tindakan}\n"
+        + ("\nULASAN / SEBAB\n" + "\n".join(l for l in ([f"Sebab : {sebab}"] if sebab else []) + ([f"Ulasan: {ulasan}"] if ulasan else [])) + "\n" if (sebab or ulasan) else "")
+        + "\nTINDAKAN SETERUSNYA\n"
+        f"{seterusnya}\n"
+        "\n"
+        f"Untuk makluman, pihak Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut melalui pautan {SYSTEM_URL}\n"
+        "\n"
+        "Kerjasama dan tindakan pihak Tuan/Puan berhubung perkara ini amat dihargai.\n"
+        "\n"
+        "Sekian, terima kasih.\n"
+        "\n"
+        '"BERKHIDMAT UNTUK NEGARA"\n'
+        "\n"
+        "Yang benar,\n"
+        "Admin Sistem Data Geospatial Bersepadu"
+    )
+
+    prefix = "MAKLUMAN" if tindakan.startswith("Tiada tindakan") else "TINDAKAN DIPERLUKAN"
+    subject = f"[{prefix}] {SUBJECT_STEP.get(status, 'PERMOHONAN')} {jenis}"
     send_mail(
         subject=subject,
-        message="\n".join(parts),
+        message=txt,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,
+        html_message=html,
         fail_silently=True,
     )
 
@@ -1076,9 +1148,9 @@ def approve_request(request, borang_type, request_id):
             log_status(data, "Tidak Disokong Oleh Pengarah Bahagian", user, sebab_tolak=sebab or "-")
             notify(data, "pb_reject", "pemohon", [data.email], "Tidak Disokong Oleh Pengarah Bahagian", sebab=sebab or "-", changed_by=user)
         else:
-            log_status(data, "Disokong Oleh Pengarah Bahagian", user)
-            notify(data, "pb_approve", "pemohon", [data.email], "Disokong Oleh Pengarah Bahagian", changed_by=user)
-            notify(data, "pb_approve", "bitg", bitg_emails(), "Disokong Oleh Pengarah Bahagian", changed_by=user)
+            log_status(data, "Disokong Oleh Pengarah Bahagian", user, ulasan=ulasan)
+            notify(data, "pb_approve", "pemohon", [data.email], "Disokong Oleh Pengarah Bahagian", ulasan=ulasan, changed_by=user)
+            notify(data, "pb_approve", "bitg", bitg_emails(), "Disokong Oleh Pengarah Bahagian", ulasan=ulasan, changed_by=user)
 
     # BITG-level approval (Pengarah Bahagian dengan bahagian BITG)
     elif is_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
@@ -1126,7 +1198,8 @@ def assign_pic(request, borang_type, request_id):
         else:
             return HttpResponseForbidden("Not allowed")
 
-        notify(data, "assign_pic", "pic", [pic_user.email], "Penugasan PIC", changed_by=user)
+        pic_action = "assign_pic_serah" if data.borang_type == "SERAHAN" else "assign_pic_pinjam"
+        notify(data, pic_action, "pic", [pic_user.email], "Penugasan PIC", changed_by=user)
         if data.borang_type == "SERAHAN":
             notify(data, "assign_serah", "pemohon", [data.email], "Penugasan PIC", changed_by=user)
         else:

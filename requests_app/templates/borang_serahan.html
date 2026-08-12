@@ -54,7 +54,7 @@
 <div class="data-box">
 <h4>DATA ASAS</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" required {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Daerah" {% if editing and "Sempadan Daerah" in prefill.komponen_data %}checked{% endif %}> Sempadan Daerah</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Mukim" {% if editing and "Sempadan Mukim" in prefill.komponen_data %}checked{% endif %}> Sempadan Mukim</label>
 <label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan" {% if editing and "Nama Bandar/Pekan" in prefill.komponen_data %}checked{% endif %}> Nama Bandar / Pekan</label>
@@ -223,7 +223,7 @@ required>
 <div class="data-box">
 <h4>JENIS<span class="req-star">*</span></h4>
 
-<label><input type="checkbox" name="jenis_data" value="Poligon" required {% if editing and "Poligon" in prefill.jenis_data %}checked{% endif %}> Poligon</label>
+<label><input type="checkbox" name="jenis_data" value="Poligon" {% if editing and "Poligon" in prefill.jenis_data %}checked{% endif %}> Poligon</label>
 <label><input type="checkbox" name="jenis_data" value="Garisan" {% if editing and "Garisan" in prefill.jenis_data %}checked{% endif %}> Garisan</label>
 <label><input type="checkbox" name="jenis_data" value="Titik/Point" {% if editing and "Titik/Point" in prefill.jenis_data %}checked{% endif %}> Titik/Point</label>
 <label><input type="checkbox" name="jenis_data" value="Jadual" {% if editing and "Jadual" in prefill.jenis_data %}checked{% endif %}> Jadual</label>
@@ -240,7 +240,7 @@ required>
 <div class="data-box">
 <h4>FORMAT<span class="req-star">*</span></h4>
 
-<label><input type="checkbox" name="format_data" value="Gedatabase" required {% if editing and "Gedatabase" in prefill.format_data %}checked{% endif %}> Gedatabase</label>
+<label><input type="checkbox" name="format_data" value="Gedatabase" {% if editing and "Gedatabase" in prefill.format_data %}checked{% endif %}> Gedatabase</label>
 <label><input type="checkbox" name="format_data" value="Shapefile" {% if editing and "Shapefile" in prefill.format_data %}checked{% endif %}> Shapefile</label>
 <label><input type="checkbox" name="format_data" value="Img" {% if editing and "Img" in prefill.format_data %}checked{% endif %}> IMG</label>
 <label><input type="checkbox" name="format_data" value="Tiff" {% if editing and "Tiff" in prefill.format_data %}checked{% endif %}> Tiff</label>
@@ -258,7 +258,7 @@ required>
 <div class="data-box">
 <h4>UNJURAN/KOORDINAT<span class="req-star">*</span></h4>
 
-<label><input type="checkbox" name="unjuranKoordinat_data" value="RSO" required {% if editing and "RSO" in prefill.unjuranKoordinat_data %}checked{% endif %}> RSO</label>
+<label><input type="checkbox" name="unjuranKoordinat_data" value="RSO" {% if editing and "RSO" in prefill.unjuranKoordinat_data %}checked{% endif %}> RSO</label>
 <label><input type="checkbox" name="unjuranKoordinat_data" value="Cassini" {% if editing and "Cassini" in prefill.unjuranKoordinat_data %}checked{% endif %}> Cassini</label>
 <label><input type="checkbox" name="unjuranKoordinat_data" value="GDM 2000" {% if editing and "GDM 2000" in prefill.unjuranKoordinat_data %}checked{% endif %}> GDM 2000</label>
 <label><input type="checkbox" name="unjuranKoordinat_data" value="WGS 84" {% if editing and "WGS 84" in prefill.unjuranKoordinat_data %}checked{% endif %}> WGS 84</label>
@@ -274,7 +274,7 @@ required>
 <div class="data-box">
 <h4>SUMBER<span class="req-star">*</span></h4>
 
-<label><input type="checkbox" name="sumber_data" value="Data RS" required {% if editing and "Data RS" in prefill.sumber_data %}checked{% endif %}> Data RS</label>
+<label><input type="checkbox" name="sumber_data" value="Data RS" {% if editing and "Data RS" in prefill.sumber_data %}checked{% endif %}> Data RS</label>
 <label><input type="checkbox" name="sumber_data" value="Peta Topo" {% if editing and "Peta Topo" in prefill.sumber_data %}checked{% endif %}> Peta Topo</label>
 <label><input type="checkbox" name="sumber_data" value="Kerja Lapangan" {% if editing and "Kerja Lapangan" in prefill.sumber_data %}checked{% endif %}> Kerja Lapangan</label>
 <label><input type="checkbox" name="sumber_data" value="Hardcopy" {% if editing and "Hardcopy" in prefill.sumber_data %}checked{% endif %}> Hardcopy: Buku/Journal/Laporan/dll</label>
@@ -303,7 +303,7 @@ required>
     <div class="meta-box">
         <h4>Meta Data<span class="req-star">*</span></h4>
         <label>
-            <input type="checkbox" name="meta_data" value="Disertakan bersama data spatial." required {% if editing and "Disertakan bersama data spatial." in prefill.meta_data %}checked{% endif %}>
+            <input type="checkbox" name="meta_data" value="Disertakan bersama data spatial." {% if editing and "Disertakan bersama data spatial." in prefill.meta_data %}checked{% endif %}>
             Disertakan bersama data spatial
         </label>
 
@@ -313,13 +313,13 @@ required>
 
     <div class="meta-box">
         <h4>Jenis Data<span class="req-star">*</span></h4>
-        <label><input type="checkbox" name="jenisdataformat" value="Bercetak" required {% if editing and "Bercetak" in prefill.jenisdataformat %}checked{% endif %}> Bercetak</label>
+        <label><input type="checkbox" name="jenisdataformat" value="Bercetak" {% if editing and "Bercetak" in prefill.jenisdataformat %}checked{% endif %}> Bercetak</label>
         <label><input type="checkbox" name="jenisdataformat" value="Digital" {% if editing and "Digital" in prefill.jenisdataformat %}checked{% endif %}> Digital</label>
     </div>
 
     <div class="meta-box">
         <h4>Klasifikasi Data<span class="req-star">*</span></h4>
-        <label><input type="checkbox" name="klasifikasidata" value="Terhad" required {% if editing and "Terhad" in prefill.klasifikasidata %}checked{% endif %}> Terhad</label>
+        <label><input type="checkbox" name="klasifikasidata" value="Terhad" {% if editing and "Terhad" in prefill.klasifikasidata %}checked{% endif %}> Terhad</label>
         <label><input type="checkbox" name="klasifikasidata" value="Tak Terhad" {% if editing and "Tak Terhad" in prefill.klasifikasidata %}checked{% endif %}> Tak Terhad</label>
     </div>
 

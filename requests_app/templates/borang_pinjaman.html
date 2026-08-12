@@ -56,7 +56,7 @@
 <div class="data-box">
 <h4>DATA ASAS</h4>
 
-<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" required {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
+<label><input type="checkbox" name="komponen_data" value="Sempadan Negeri" {% if editing and "Sempadan Negeri" in prefill.komponen_data %}checked{% endif %}> Sempadan Negeri</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Daerah" {% if editing and "Sempadan Daerah" in prefill.komponen_data %}checked{% endif %}> Sempadan Daerah</label>
 <label><input type="checkbox" name="komponen_data" value="Sempadan Mukim" {% if editing and "Sempadan Mukim" in prefill.komponen_data %}checked{% endif %}> Sempadan Mukim</label>
 <label><input type="checkbox" name="komponen_data" value="Nama Bandar/Pekan" {% if editing and "Nama Bandar/Pekan" in prefill.komponen_data %}checked{% endif %}> Nama Bandar / Pekan</label>
