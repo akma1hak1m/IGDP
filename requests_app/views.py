@@ -76,7 +76,7 @@ SUBJECT_STEP = {
     "Tidak Mendapat Kelulusan Pengarah BITG": "KELULUSAN PERMOHONAN",
     "Mendapat Kelulusan Pengarah BITG": "KELULUSAN PERMOHONAN",
     "Penugasan PIC": "PENUGASAN PIC",
-    "Pemohon Hantar Data": "PENGHANTARAN DATA",
+    "Pemohon Hantar Data": "VERIFIKASI SERAHAN DATA",
     "PIC Hantar Data": "PENGHANTARAN DATA",
     "Pembetulan Oleh Pemohon": "PENGHANTARAN DATA",
     "Pemohon Semak Data": "VERIFIKASI DATA",
@@ -308,7 +308,7 @@ ACTION_TEXT = {
     },
     "assign_pic_serah": {
         "pic": (
-            "Sila ambil tindakan terhadap tugasan yang telah diberikan.",
+            "Sila ambil maklum terhadap tugasan yang telah diberikan.",
             "Serahan: menunggu pemohon menghantar data kepada anda untuk verifikasi.",
         ),
     },
@@ -396,7 +396,7 @@ def step_label(borang_type, status):
     return "-"
 
 
-def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=None, changed_by=None):
+def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=None, changed_by=None, subject_override=None, prefix_override=None):
     """Send formalised HTML notification email for a request action."""
     if not recipients:
         return
@@ -432,7 +432,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         row("Nama Pemohon", obj.namapemohon or "-"),
         row("Agensi/Bahagian", bahagian),
         row("Tarikh Permohonan", tarikh_permohonan),
-        row("Data Dipohon", data_dipohon),
+        row("Komponen Data", data_dipohon),
     ])
 
     status_rows = "".join([
@@ -479,6 +479,11 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
             lines.append(f"Ulasan: {ulasan}")
         ulasan_block = heading("ULASAN / SEBAB") + "".join(para(l) for l in lines)
 
+    pic_name = obj.pic.get_full_name() or obj.pic.username if obj.pic_id else "-"
+    tindakan_seterusnya_html = para(seterusnya)
+    if action == "assign_serah":
+        tindakan_seterusnya_html = para(f"{seterusnya}<br><br><b>PIC Penugasan:</b> {pic_name}")
+
     html = (
         '<div style="font-family:Arial,\'Segoe UI\',sans-serif;color:#1f2d3d;font-size:14px;line-height:1.6;">'
         "<p>Assalamualaikum dan Salam Sejahtera,</p>"
@@ -492,7 +497,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         f"{action_para(tindakan)}"
         f"{ulasan_block}"
         f"{heading('TINDAKAN SETERUSNYA')}"
-        f"{para(seterusnya)}"
+        f"{tindakan_seterusnya_html}"
         "<p>Untuk makluman, pihak Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut melalui pautan: "
         f'<a href="{SYSTEM_URL}">{SYSTEM_URL}</a></p>'
         "<p>Kerjasama dan tindakan pihak Tuan/Puan berhubung perkara ini amat dihargai.</p>"
@@ -519,7 +524,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         f"Nama Pemohon       : {obj.namapemohon or '-'}\n"
         f"Agensi/Bahagian    : {bahagian}\n"
         f"Tarikh Permohonan  : {tarikh_permohonan}\n"
-        f"Data Dipohon       : {data_dipohon}\n"
+        f"Komponen Data    : {data_dipohon}\n"
         "\n"
         "STATUS PERMOHONAN\n"
         f"Status Semasa      : {status}\n"
@@ -531,8 +536,8 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         f"{tindakan}\n"
         + ("\nULASAN / SEBAB\n" + "\n".join(l for l in ([f"Sebab : {sebab}"] if sebab else []) + ([f"Ulasan: {ulasan}"] if ulasan else [])) + "\n" if (sebab or ulasan) else "")
         + "\nTINDAKAN SETERUSNYA\n"
-        f"{seterusnya}\n"
-        "\n"
+        + (f"{seterusnya}\n\nPIC Penugasan: {pic_name}\n" if action == "assign_serah" else f"{seterusnya}\n")
+        + "\n"
         f"Untuk makluman, pihak Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut melalui pautan {SYSTEM_URL}\n"
         "\n"
         "Kerjasama dan tindakan pihak Tuan/Puan berhubung perkara ini amat dihargai.\n"
@@ -545,8 +550,9 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         "Admin Sistem Data Geospatial Bersepadu"
     )
 
-    prefix = "MAKLUMAN" if tindakan.startswith("Tiada tindakan") else "TINDAKAN DIPERLUKAN"
-    subject = f"[{prefix}] {SUBJECT_STEP.get(status, 'PERMOHONAN')} {jenis}"
+    prefix = prefix_override if prefix_override else ("MAKLUMAN" if tindakan.startswith("Tiada tindakan") else "TINDAKAN DIPERLUKAN")
+    subject_step = subject_override if subject_override else SUBJECT_STEP.get(status, 'PERMOHONAN')
+    subject = f"[{prefix}] {subject_step} {jenis}" if not subject_override else f"[{prefix}] {subject_override}"
     send_mail(
         subject=subject,
         message=txt,
@@ -628,7 +634,12 @@ def user_login(request):
         if user:
             login(request, user)
             LoginLog.objects.create(user=user)
-            return redirect("home")
+            if is_pic(user):
+                return redirect("upload_page")
+            elif is_pengarah_bahagian(user) or is_bitg(user):
+                return redirect("pengarah_dashboard")
+            else:
+                return redirect("home")
         else:
             error = True
     return render(request, "login.html", {"error": error})
@@ -794,7 +805,7 @@ def borang_serahan(request):
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
         notify(obj, "submit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
-        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user, subject_override=f"SOKONGAN PERMOHONAN {JENIS_LABEL.get(obj.borang_type, 'PERMOHONAN DATA')}")
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -826,7 +837,7 @@ def borang_serahan_edit(request, request_id):
         obj.save()
         log_status(obj, "Borang Telah Dihantar", request.user)
         notify(obj, "resubmit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
-        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user, subject_override=f"SOKONGAN PERMOHONAN {JENIS_LABEL.get(obj.borang_type, 'PERMOHONAN DATA')}")
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -900,7 +911,7 @@ def borang_pinjaman(request):
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
         notify(obj, "submit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
-        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "submit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user, subject_override=f"SOKONGAN PERMOHONAN {JENIS_LABEL.get(obj.borang_type, 'PERMOHONAN DATA')}")
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -932,7 +943,7 @@ def borang_pinjaman_edit(request, request_id):
         obj.save()
         log_status(obj, "Borang Telah Dihantar", request.user)
         notify(obj, "resubmit", "pemohon", [obj.email], "Borang Telah Dihantar", changed_by=request.user)
-        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user)
+        notify(obj, "resubmit", "pb", bahagian_pb_emails(obj.bahagian), "Borang Telah Dihantar", changed_by=request.user, subject_override=f"SOKONGAN PERMOHONAN {JENIS_LABEL.get(obj.borang_type, 'PERMOHONAN DATA')}")
         return redirect("status")
 
     applicant_name, applicant_email, applicant_phone = applicant_info(request.user)
@@ -1150,7 +1161,7 @@ def approve_request(request, borang_type, request_id):
         else:
             log_status(data, "Disokong Oleh Pengarah Bahagian", user, ulasan=ulasan)
             notify(data, "pb_approve", "pemohon", [data.email], "Disokong Oleh Pengarah Bahagian", ulasan=ulasan, changed_by=user)
-            notify(data, "pb_approve", "bitg", bitg_emails(), "Disokong Oleh Pengarah Bahagian", ulasan=ulasan, changed_by=user)
+            notify(data, "pb_approve", "bitg", bitg_emails(), "Disokong Oleh Pengarah Bahagian", ulasan=ulasan, changed_by=user, subject_override=f"KELULUSAN PERMOHONAN {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}")
 
     # BITG-level approval (Pengarah Bahagian dengan bahagian BITG)
     elif is_bitg(user) and data.status == "Disokong Oleh Pengarah Bahagian":
@@ -1199,9 +1210,9 @@ def assign_pic(request, borang_type, request_id):
             return HttpResponseForbidden("Not allowed")
 
         pic_action = "assign_pic_serah" if data.borang_type == "SERAHAN" else "assign_pic_pinjam"
-        notify(data, pic_action, "pic", [pic_user.email], "Penugasan PIC", changed_by=user)
+        notify(data, pic_action, "pic", [pic_user.email], "Penugasan PIC", changed_by=user, subject_override=f"PENUGASAN PIC {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}", prefix_override="MAKLUMAN")
         if data.borang_type == "SERAHAN":
-            notify(data, "assign_serah", "pemohon", [data.email], "Penugasan PIC", changed_by=user)
+            notify(data, "assign_serah", "pemohon", [data.email], "Penugasan PIC", changed_by=user, subject_override="PELAKSANAAN SERAHAN DATA")
         else:
             notify(data, "assign_pinjam", "pemohon", [data.email], "Penugasan PIC", changed_by=user)
         return redirect("pengarah_dashboard")
@@ -1240,7 +1251,7 @@ def pemohon_hantar_data(request, request_id):
 
     catatan = request.POST.get("catatan")
     log_status(obj, "Pemohon Hantar Data", request.user, ulasan=catatan)
-    notify(obj, "hantar_data", "pic", [obj.pic.email] if obj.pic else [], "Pemohon Hantar Data", changed_by=request.user)
+    notify(obj, "hantar_data", "pic", [obj.pic.email] if obj.pic else [], "Pemohon Hantar Data", changed_by=request.user, subject_override="VERIFIKASI SERAHAN DATA")
     return redirect("status")
 
 
@@ -1263,18 +1274,20 @@ def verify_data(request, borang_type, request_id):
 
     # SERAHAN: PIC verifikasi / pembetulan (kembali kepada pemohon)
     if data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Pemohon Hantar Data":
+        ulasan = request.POST.get("ulasan")
         if action == "reject":
             log_status(data, "Pembetulan Oleh Pemohon", user, sebab_tolak=sebab or "-")
-            notify(data, "verify_reject", "pemohon", [data.email], "Pembetulan Oleh Pemohon", sebab=sebab or "-", changed_by=user)
+            notify(data, "verify_reject", "pemohon", [data.email], "Pembetulan Oleh Pemohon", sebab=sebab or "-", changed_by=user, subject_override=f"PENAMBAHBAIKAN {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}")
         else:
-            log_status(data, "Verifikasi Data", user)
-            notify(data, "verify_ok", "pemohon", [data.email], "Verifikasi Data", changed_by=user)
+            log_status(data, "Verifikasi Data", user, ulasan=ulasan)
+            notify(data, "verify_ok", "pemohon", [data.email], "Verifikasi Data", ulasan=ulasan, changed_by=user, subject_override="VERIFIKASI SERAHAN DATA")
 
     # SERAHAN: PIC sahkan penerimaan data -> selesai
     elif data.borang_type == "SERAHAN" and is_pic(user) and data.pic_id == user.id and data.status == "Verifikasi Data":
-        log_status(data, "Sahkan Penerimaan Data", user)
+        ulasan = request.POST.get("ulasan")
+        log_status(data, "Sahkan Penerimaan Data", user, ulasan=ulasan)
         log_status(data, "Selesai", user)
-        notify(data, "serah_selesai", "pemohon", [data.email], "Selesai", changed_by=user)
+        notify(data, "serah_selesai", "pemohon", [data.email], "Selesai", ulasan=ulasan, changed_by=user, subject_override="PENERIMAAN SERAHAN DATA")
 
     # PINJAMAN: PIC hantar data -> semakan oleh pemohon
     elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Penugasan PIC":
@@ -1375,7 +1388,7 @@ def update_status(request, borang_type, request_id, new_status):
 
 @login_required
 def statistics(request):
-    if not (is_admin(request.user) or is_bitg(request.user)):
+    if not (is_admin(request.user) or is_bitg(request.user) or request.user.is_staff):
         return redirect("home")
 
     from django.utils.timezone import now
@@ -1538,11 +1551,31 @@ def forgot_password_page(request):
             link = request.build_absolute_uri(
                 reverse("password_reset_confirm", kwargs={"uidb64": uid, "token": token})
             )
+
+            html = (
+                '<div style="font-family:Arial,\'Segoe UI\',sans-serif;color:#1f2d3d;font-size:14px;line-height:1.6;">'
+                "<p>Assalamualaikum dan Salam Sejahtera,</p>"
+                "<p>Tuan/Puan,</p>"
+                "<p><b>PENUKARAN KATA LALUAN</b></p>"
+                "<p>Dengan hormatnya perkara di atas adalah dirujuk.</p>"
+                "<p>Permohonan penukaran kata laluan untuk akaun sistem Data Geospatial Bersepadu telah diterima.</p>"
+                "<p>Sila klik pautan di bawah untuk menetapkan kata laluan baharu:</p>"
+                f'<p style="margin:16px 0;"><a href="{link}" style="display:inline-block;padding:10px 24px;background:#0b3d5c;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;">Tetapkan Kata Laluan Baharu</a></p>'
+                "<p>Pautan ini sah untuk waktu terhad. Jika anda tidak memohon penukaran kata laluan, sila abaikan emel ini.</p>"
+                "<p>Untuk makluman, pihak Tuan/Puan boleh mengakses sistem melalui pautan: "
+                f'<a href="{SYSTEM_URL}">{SYSTEM_URL}</a></p>'
+                "<p>Sekian, terima kasih.</p>"
+                '<p style="margin:34px 0 4px;font-weight:bold;">"BERKHIDMAT UNTUK NEGARA"</p>'
+                "<p>Yang benar,<br>Admin Sistem Data Geospatial Bersepadu</p>"
+                "</div>"
+            )
+
             send_mail(
-                "Reset Kata Laluan MYSA",
-                f"Klik pautan berikut:\n{link}",
+                "Penukaran Kata Laluan Sistem Data Geospatial Bersepadu",
+                f"Sila klik pautan berikut untuk menetapkan kata laluan baharu:\n{link}",
                 settings.EMAIL_HOST_USER,
                 [email],
+                html_message=html,
                 fail_silently=False,
             )
             messages.success(request, "Link reset dihantar ke email.")

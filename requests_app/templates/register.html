@@ -1,18 +1,30 @@
 {% load static %}
 <!DOCTYPE html>
 <html>
-    {% if messages %}
-    {% for message in messages %}
-        <div class="alert-msg">
-            {{ message }}
-        </div>
-    {% endfor %}
-{% endif %}
-
 <head>
 <meta charset="UTF-8">
 <title>Daftar Akaun</title>
 <link rel="stylesheet" href="{% static 'css/templatemo-nexaverse.css' %}">
+<style>
+html, body { overflow: hidden; height: 100%; margin: 0; padding-top: 16px; box-sizing: border-box; }
+.header { margin-bottom: 14px !important; }
+.hero-logo { width: 100px !important; margin-bottom: 6px !important; }
+.brand-name { font-size: 18px !important; letter-spacing: 2px !important; margin-bottom: 1px !important; margin-top: 1px !important; }
+.tagline { font-size: 11px !important; letter-spacing: 2px !important; }
+.glass-card.login-card { padding: 16px 28px !important; margin-top: 0 !important; }
+.auth-title { font-size: 16px !important; margin: 0 0 8px !important; }
+.form-group { margin-bottom: 8px !important; }
+.form-group input, .form-group select { padding: 10px 14px !important; font-size: 13px !important; }
+.login-btn { padding: 10px !important; font-size: 14px !important; }
+.bottom-link { font-size: 13px !important; margin-top: 8px !important; }
+.toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: bold;
+    z-index: 9999; opacity: 0; transition: opacity 0.3s;
+}
+.toast.success { background: #1b5e20; border: 1px solid #4caf50; }
+.toast.error { background: #b71c1c; border: 1px solid #ef5350; }
+</style>
 </head>
 
 <body>
@@ -24,6 +36,14 @@
 </div>
 
 <div class="grid-overlay"></div>
+
+{% if messages %}
+{% for message in messages %}
+<div class="toast {% if message.tags %}{{ message.tags }}{% else %}success{% endif %}" id="toast">
+    {% if message.tags == 'error' %}&#10060;{% else %}&#9989;{% endif %} {{ message }}
+</div>
+{% endfor %}
+{% endif %}
 
 <div class="header">
 <img src="{% static 'images/logomysa.png' %}" class="hero-logo">
@@ -43,7 +63,7 @@
 
 <div class="form-group"><input type="text" name="fullname" placeholder="Nama Penuh" required></div>
 <div class="form-group"><input type="text" name="username" placeholder="Username" required></div>
-<div class="form-group"><input type="email" name="email" placeholder="Email" required></div>
+<div class="form-group"><input type="email" name="email" placeholder="Emel" required></div>
 <div class="form-group"><input type="text" name="telefon" placeholder="No. Telefon"></div>
 <div class="form-group">
     <select name="bahagian" required>
@@ -69,6 +89,17 @@ Daftar Sekarang
 </form>
 
 </div>
+
+{% if messages %}
+<script>
+window.addEventListener("load", function () {
+    var toast = document.getElementById("toast");
+    if (!toast) return;
+    toast.style.opacity = "1";
+    setTimeout(function () { toast.style.opacity = "0"; }, 3000);
+});
+</script>
+{% endif %}
 
 <script src="{% static 'js/submit-guard.js' %}"></script>
 </body>

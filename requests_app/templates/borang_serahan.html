@@ -1,6 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* PAGE NO SCROLL - CARD SCROLLS INSIDE */
+html, body{
+    overflow:hidden;
+    height:100%;
+}
+
+.container{
+    height:100vh;
+    min-height:0;
+    box-sizing:border-box;
+    padding:16px 40px 20px;
+}
+
+.form-card{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    margin:0 auto;
+    padding:30px 50px;
+}
+
+.form-card::-webkit-scrollbar{ width:8px; }
+.form-card::-webkit-scrollbar-track{ background:transparent; }
+.form-card::-webkit-scrollbar-thumb{
+    background:rgba(0,234,255,0.35);
+    border-radius:8px;
+}
+</style>
+
 <div class="glass-card form-card fade-in fade-delay-2">
 
 <h2 class="flow-title">BORANG SERAHAN DATA</h2>
@@ -31,7 +61,7 @@
 </div>
 
 <div class="form-group">
-<label>Email</label>
+<label>Emel</label>
 <input type="text" value="{{ applicant_email }}" readonly>
 </div>
 

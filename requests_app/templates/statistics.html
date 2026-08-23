@@ -2,6 +2,37 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+/* PAGE NO SCROLL - CARD SCROLLS INSIDE */
+html, body{
+    overflow:hidden;
+    height:100%;
+}
+
+.container{
+    height:100vh;
+    min-height:0;
+    box-sizing:border-box;
+    padding:16px 40px 20px;
+}
+
+.form-card.stat-page{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    margin:0 auto;
+    padding:30px 50px;
+    padding-bottom:50px;
+}
+
+.form-card.stat-page::-webkit-scrollbar{ width:8px; }
+.form-card.stat-page::-webkit-scrollbar-track{ background:transparent; }
+.form-card.stat-page::-webkit-scrollbar-thumb{
+    background:rgba(0,234,255,0.35);
+    border-radius:8px;
+}
+</style>
+
 <div class="glass-card form-card stat-page">
 
 <h2 class="flow-title">STATISTIK SISTEM</h2>

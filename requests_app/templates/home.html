@@ -3,6 +3,65 @@
 
 {% block content %}
 
+<style>
+/* FIT HOME IN VIEWPORT - NO SCROLL */
+html, body{
+    overflow:hidden;
+    height:100%;
+}
+
+.container{
+    height:100vh;
+    min-height:0;
+    box-sizing:border-box;
+    padding:16px 40px 20px;
+}
+
+.welcome-left{ margin:0 0 4px 35px; }
+.welcome-label{ font-size:15px; margin-bottom:2px; }
+.welcome-name{ font-size:17px; }
+
+.header{ margin-bottom:8px; }
+.hero-logo{ width:95px; margin-bottom:6px; }
+.brand-name{ font-size:26px; letter-spacing:4px; margin-bottom:4px; }
+.tagline{ font-size:13px; letter-spacing:3px; }
+
+.divider-line{ margin:6px auto 10px; }
+
+.flow-tabs{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    margin-top:0;
+    margin-bottom:12px;
+}
+.flow-tab-nav{ gap:10px; margin-bottom:10px; }
+.flow-tab-btn{ padding:9px 22px; font-size:14px; }
+.flow-tab-pane.active{
+    flex:1;
+    min-height:0;
+    display:flex;
+}
+.flow-container{
+    flex:1;
+    min-height:0;
+    align-items:center;
+    margin-top:4px;
+}
+.flow-image{
+    width:auto;
+    max-width:min(70%, 1100px);
+    height:auto;
+    max-height:100%;
+    object-fit:contain;
+}
+.flow-image:hover{
+    transform:none;
+    box-shadow:0 0 45px rgba(0,234,255,0.7);
+}
+</style>
+
 <div class="welcome-left fade-in">
 
     <div class="welcome-label">

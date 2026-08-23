@@ -2,6 +2,37 @@
 {% load static %}
 {% block content %}
 
+<style>
+/* FIT LOGIN IN VIEWPORT - NO SCROLL */
+html, body{
+    overflow:hidden;
+    height:100%;
+}
+
+.container{
+    height:100vh;
+    min-height:0;
+    box-sizing:border-box;
+    padding:20px 40px;
+    justify-content:center;
+}
+
+.header.login-header{ margin-bottom:28px; }
+.hero-logo{ width:130px; margin-bottom:10px; }
+.brand-name{ font-size:26px; letter-spacing:4px; margin-bottom:4px; }
+.tagline{ font-size:13px; letter-spacing:3px; }
+
+.login-card{
+    padding:28px 40px;
+    margin-bottom:0;
+    margin-top:6px;
+}
+.login-card .form-group{ margin-bottom:14px; }
+.login-card input{ padding:13px 18px; font-size:15px; }
+.login-btn{ padding:13px; font-size:16px; }
+.auth-links{ font-size:14px; }
+</style>
+
 <div class="header login-header">
     <img src="{% static 'images/logomysa.png' %}" class="hero-logo fade-in fade-delay-1">
 

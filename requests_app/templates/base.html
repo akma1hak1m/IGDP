@@ -46,8 +46,12 @@
     {% endif %}
 {% endfor %}
 
+{% if request.user.is_staff %}
+    <a href="{% url 'statistics' %}">Statistik</a>
+{% endif %}
+
 {% for group in request.user.groups.all %}
-    {% if group.name == "Admin" %}
+    {% if group.name == "Admin" and not request.user.is_staff %}
         <a href="{% url 'statistics' %}">Statistik</a>
     {% endif %}
 {% endfor %}

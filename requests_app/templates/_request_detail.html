@@ -25,7 +25,7 @@
     <form method="POST" action="{% url 'approve_request' r.borang_type r.id %}">
         {% csrf_token %}
         <textarea name="ulasan" placeholder="Ulasan"></textarea>
-        <textarea name="sebab_tolak" placeholder="Sebab tidak disokong (jika perlu)"></textarea>
+        <textarea name="sebab_tolak" placeholder="Sebab tidak lulus (jika perlu)"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Lulus</button>
         <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Lulus</button>
     </form>
@@ -34,6 +34,7 @@
     {% if is_pic and r.borang_type == "SERAHAN" and r.pic_id == request.user.id and r.status == "Verifikasi Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
+        <textarea name="ulasan" placeholder="Ulasan verifikasi"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Sahkan Penerimaan Data</button>
     </form>
     {% endif %}
@@ -41,6 +42,7 @@
     {% if is_pic and r.borang_type == "SERAHAN" and r.status == "Pemohon Hantar Data" %}
     <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
         {% csrf_token %}
+        <textarea name="ulasan" placeholder="Ulasan (jika sah)"></textarea>
         <textarea name="sebab_tolak" placeholder="Sebab (jika tidak sah)"></textarea>
         <button type="submit" name="action" value="approve" class="btn-approve">✔ Sah</button>
         <button type="submit" name="action" value="reject" class="btn-reject">✘ Tidak Sah</button>
@@ -88,7 +90,7 @@
 
 <div class="details-box">
     <p><b>Nama Pemohon:</b></p><p>{{ r.namapemohon }}</p>
-    <p><b>Email:</b></p><p>{{ r.email }}</p>
+    <p><b>Emel:</b></p><p>{{ r.email }}</p>
     <p><b>No. Telefon:</b></p><p>{{ r.telefon }}</p>
     <p><b>Bahagian:</b></p><p>{{ r.bahagian.nama|default:"-" }}</p>
     <p><b>Komponen Data:</b></p><p>{{ r.komponen_data }}</p>
