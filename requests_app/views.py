@@ -249,7 +249,7 @@ def request_list_context():
         "status_options": statuses,
         "negeri_options": Negeri.objects.all(),
         "bahagian_options": Bahagian.objects.all(),
-        "per_page_options": [10, 15, 20, 50],
+        "per_page_options": [5, 10, 15, 20, 50],
     }
 
 
@@ -349,6 +349,10 @@ ACTION_TEXT = {
         ),
     },
     "serah_selesai": {
+        "pic": (
+            "Tiada tindakan diperlukan. Permohonan telah selesai.",
+            "Permohonan ditutup.",
+        ),
         "pemohon": (
             "Tiada tindakan diperlukan. Permohonan telah selesai.",
             "Permohonan ditutup.",
@@ -367,6 +371,14 @@ ACTION_TEXT = {
         ),
     },
     "pinjam_selesai": {
+        "pic": (
+            "Tiada tindakan diperlukan. Permohonan telah selesai.",
+            "Permohonan ditutup.",
+        ),
+        "pemohon": (
+            "Tiada tindakan diperlukan. Permohonan telah selesai.",
+            "Permohonan ditutup.",
+        ),
         "pic_all": (
             "Tiada tindakan diperlukan. Permohonan telah selesai.",
             "Permohonan ditutup.",
@@ -481,7 +493,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
 
     pic_name = obj.pic.get_full_name() or obj.pic.username if obj.pic_id else "-"
     tindakan_seterusnya_html = para(seterusnya)
-    if action == "assign_serah":
+    if action in ("assign_serah", "assign_pic_serah", "assign_pic_pinjam", "assign_pinjam"):
         tindakan_seterusnya_html = para(f"{seterusnya}<br><br><b>PIC Penugasan:</b> {pic_name}")
 
     html = (
@@ -536,7 +548,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         f"{tindakan}\n"
         + ("\nULASAN / SEBAB\n" + "\n".join(l for l in ([f"Sebab : {sebab}"] if sebab else []) + ([f"Ulasan: {ulasan}"] if ulasan else [])) + "\n" if (sebab or ulasan) else "")
         + "\nTINDAKAN SETERUSNYA\n"
-        + (f"{seterusnya}\n\nPIC Penugasan: {pic_name}\n" if action == "assign_serah" else f"{seterusnya}\n")
+        + (f"{seterusnya}\n\nPIC Penugasan: {pic_name}\n" if action in ("assign_serah", "assign_pic_serah", "assign_pic_pinjam", "assign_pinjam") else f"{seterusnya}\n")
         + "\n"
         f"Untuk makluman, pihak Tuan/Puan boleh membuat tindakan yang diperlukan melalui sistem dengan mengakses permohonan tersebut melalui pautan {SYSTEM_URL}\n"
         "\n"
@@ -1055,11 +1067,11 @@ def requests_list(request):
 
     total = len(recs)
     try:
-        per_page = int(request.GET.get("per_page", 15))
+        per_page = int(request.GET.get("per_page", 5))
     except (TypeError, ValueError):
         per_page = 15
-    if per_page not in (10, 15, 20, 50):
-        per_page = 15
+    if per_page not in (5, 10, 15, 20, 50):
+        per_page = 5
     try:
         page = int(request.GET.get("page", 1)) or 1
     except (TypeError, ValueError):
@@ -1210,7 +1222,7 @@ def assign_pic(request, borang_type, request_id):
             return HttpResponseForbidden("Not allowed")
 
         pic_action = "assign_pic_serah" if data.borang_type == "SERAHAN" else "assign_pic_pinjam"
-        notify(data, pic_action, "pic", [pic_user.email], "Penugasan PIC", changed_by=user, subject_override=f"PENUGASAN PIC {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}", prefix_override="MAKLUMAN")
+        notify(data, pic_action, "pic", [pic_user.email], "Penugasan PIC", changed_by=user, subject_override=f"PENUGASAN PIC {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}", prefix_override="TINDAKAN DIPERLUKAN")
         if data.borang_type == "SERAHAN":
             notify(data, "assign_serah", "pemohon", [data.email], "Penugasan PIC", changed_by=user, subject_override="PELAKSANAAN SERAHAN DATA")
         else:
@@ -1287,7 +1299,8 @@ def verify_data(request, borang_type, request_id):
         ulasan = request.POST.get("ulasan")
         log_status(data, "Sahkan Penerimaan Data", user, ulasan=ulasan)
         log_status(data, "Selesai", user)
-        notify(data, "serah_selesai", "pemohon", [data.email], "Selesai", ulasan=ulasan, changed_by=user, subject_override="PENERIMAAN SERAHAN DATA")
+        notify(data, "serah_selesai", "pemohon", [data.email], "Selesai", ulasan=ulasan, changed_by=user, subject_override="SELESAI PENERIMAAN SERAHAN DATA")
+        notify(data, "serah_selesai", "pic", [data.pic.email] if data.pic else [], "Selesai", ulasan=ulasan, changed_by=user, subject_override="SELESAI PENERIMAAN SERAHAN DATA")
 
     # PINJAMAN: PIC hantar data -> semakan oleh pemohon
     elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Penugasan PIC":
@@ -1295,21 +1308,30 @@ def verify_data(request, borang_type, request_id):
         data.deadline = timezone.now() + timedelta(days=5)
         data.save()
         log_status(data, "PIC Hantar Data", user, ulasan=ulasan_pic)
-        notify(data, "pic_hantar", "pemohon", [data.email], "PIC Hantar Data", ulasan=ulasan_pic, changed_by=user)
+        notify(data, "pic_hantar", "pemohon", [data.email], "PIC Hantar Data", ulasan=ulasan_pic, changed_by=user, subject_override=f"PENGHANTARAN {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}")
+
+    # PINJAMAN: PIC hantar semula data selepas pemohon reject
+    elif data.borang_type == "PINJAMAN" and is_pic(user) and data.pic_id == user.id and data.status == "Pembetulan Oleh PIC":
+        ulasan_pic = request.POST.get("ulasan")
+        data.deadline = timezone.now() + timedelta(days=5)
+        data.save()
+        log_status(data, "PIC Hantar Data", user, ulasan=ulasan_pic)
+        notify(data, "pic_hantar", "pemohon", [data.email], "PIC Hantar Data", ulasan=ulasan_pic, changed_by=user, subject_override=f"PENGHANTARAN SEMULA {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}")
 
     # PINJAMAN: Pemohon semak data -> sahkan penerimaan (1 klik) / kembali kepada PIC
     elif data.borang_type == "PINJAMAN" and data.pemohon_id == user.id and data.status == "PIC Hantar Data":
         if action == "reject":
             data.deadline = timezone.now() + timedelta(days=5)
             data.save()
-            log_status(data, "Penugasan PIC", user, sebab_tolak=sebab or "-")
-            notify(data, "pinjam_reject", "pic", [data.pic.email] if data.pic else [], "Penugasan PIC", sebab=sebab or "-", changed_by=user)
+            log_status(data, "Pembetulan Oleh PIC", user, sebab_tolak=sebab or "-")
+            notify(data, "pinjam_reject", "pic", [data.pic.email] if data.pic else [], "Pembetulan Oleh PIC", sebab=sebab or "-", changed_by=user, subject_override=f"PENAMBAHBAIKAN {JENIS_LABEL.get(data.borang_type, 'PERMOHONAN DATA')}")
         else:
             ulasan_pemohon = request.POST.get("ulasan")
             log_status(data, "Pemohon Semak Data", user, ulasan=ulasan_pemohon)
             log_status(data, "Pemohon Sahkan Penerimaan Data", user, ulasan=ulasan_pemohon)
             log_status(data, "Selesai", user)
-            notify(data, "pinjam_selesai", "pic_all", group_emails("PIC"), "Selesai", ulasan=ulasan_pemohon, changed_by=user)
+            notify(data, "pinjam_selesai", "pic", [data.pic.email] if data.pic else [], "Selesai", ulasan=ulasan_pemohon, changed_by=user, subject_override="SELESAI PENERIMAAN PINJAMAN DATA")
+            notify(data, "pinjam_selesai", "pemohon", [data.email], "Selesai", ulasan=ulasan_pemohon, changed_by=user, subject_override="SELESAI PENERIMAAN PINJAMAN DATA")
     else:
         return HttpResponseForbidden("Not allowed")
 
@@ -1501,6 +1523,9 @@ def register_page(request):
 
         if not fullname or not username or not email:
             messages.error(request, "Sila lengkapkan semua maklumat.")
+            return redirect("register")
+        if not email.endswith("@mysa.gov.my"):
+            messages.error(request, "Hanya emel @mysa.gov.my dibenarkan untuk mendaftar.")
             return redirect("register")
         if password != confirm:
             messages.error(request, "Kata laluan tidak sepadan.")

@@ -57,6 +57,14 @@
     </form>
     {% endif %}
 
+    {% if is_pic and r.borang_type == "PINJAMAN" and r.status == "Pembetulan Oleh PIC" %}
+    <form method="POST" action="{% url 'verify_data' r.borang_type r.id %}">
+        {% csrf_token %}
+        <textarea name="ulasan" placeholder="Ulasan (cara hantar / nota)"></textarea>
+        <button type="submit" name="action" value="approve" class="btn-approve">✔ Hantar Semula Data</button>
+    </form>
+    {% endif %}
+
     {% if request.user == r.pemohon and r.borang_type == "SERAHAN" and r.status == "Penugasan PIC" %}
     <form method="POST" action="{% url 'pemohon_hantar_data' r.id %}">
         {% csrf_token %}

@@ -29,6 +29,25 @@ html, body{
     background:rgba(0,234,255,0.35);
     border-radius:8px;
 }
+
+.form-section .section-title {
+    background: none;
+    -webkit-text-fill-color: #f5a623;
+    color: #f5a623;
+    font-size: 20px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+.toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: bold;
+    z-index: 9999; opacity: 0; transition: opacity 0.3s;
+}
+.toast.success { background: #1b5e20; border: 1px solid #4caf50; }
+.toast.error { background: #b71c1c; border: 1px solid #ef5350; }
 </style>
 
 <div class="glass-card form-card fade-in fade-delay-2">
@@ -232,7 +251,7 @@ style="display:none; margin-top:10px;">
 </div>
 
 <div class="form-group">
-<label>Indeks Peta Topo<span class="req-star">*</span></label>
+<label>Indeks Peta Topo</label>
 <input type="text"
 name="indeks"
 value="{% if editing %}{{ obj.indeks|default:"" }}{% endif %}"
@@ -442,6 +461,22 @@ mukim.addEventListener("change", function(){
         mukimLain.style.display = "none";
     }
 
+});
+
+function showToast(msg, type) {
+    let existing = document.getElementById("app-toast");
+    if (existing) existing.remove();
+    const t = document.createElement("div");
+    t.id = "app-toast";
+    t.className = "toast " + (type || "success");
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = "1"; });
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+document.querySelector("form").addEventListener("submit", function() {
+    showToast("Menghantar borang...", "success");
 });
 
 </script>

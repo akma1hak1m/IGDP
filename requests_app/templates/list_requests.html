@@ -68,12 +68,13 @@ html, body{
             <th data-sort="borang_type">Jenis</th>
             <th data-sort="namapemohon">Pemohon</th>
             <th data-sort="bahagian">Bahagian</th>
-            <th data-sort="status">Status</th>
             <th data-sort="created_at">Tarikh</th>
+            <th data-sort="status">Status</th>
+            <th>Tindakan</th>
         </tr>
     </thead>
     <tbody id="rows">
-        <tr><td colspan="6" class="empty-text">Memuat...</td></tr>
+        <tr><td colspan="7" class="empty-text">Memuat...</td></tr>
     </tbody>
 </table>
 
@@ -96,8 +97,12 @@ html, body{
 .req-table th.sort-desc::after { content:" ▼"; }
 .req-table th.sort-asc::after { content:" ▲"; }
 .req-table tbody tr { cursor:pointer; transition:background .15s; }
-.req-table tbody tr:hover { background:rgba(255,255,255,.06); }
+.req-table tbody tr:hover { background:rgba(255,193,7,.15); }
 .req-table .row-id { color:#8ab4f8; font-weight:600; }
+.action-edit { cursor:pointer; font-size:18px; color:#f5a623; transition:transform .15s; }
+.action-edit:hover { transform:scale(1.2); }
+.action-done { font-size:18px; color:#4caf50; }
+.status-done { background:#1b5e20 !important; color:#fff !important; }
 .pager { display:flex; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap; }
 .pager button { padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:transparent; color:#e3f2fd; cursor:pointer; }
 .pager button:hover { background:rgba(255,255,255,.1); }
@@ -109,21 +114,29 @@ html, body{
 .filter-type { display:flex; gap:12px; color:#e3f2fd; font-size:14px; }
 .search-input { flex:1; min-width:180px; }
 
-.detail-overlay { display:none; position:fixed; inset:0; background:rgba(2,12,22,.72); z-index:1000; justify-content:flex-end; }
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(2,12,22,.72); z-index:1000; justify-content:center; align-items:center; }
 .detail-overlay.open { display:flex; }
-.detail-sidebar { width:min(560px, 94vw); height:100%; background:#0b1b2b; border-left:1px solid rgba(255,255,255,.12); overflow-y:auto; padding:20px 22px; position:relative; }
-.detail-close { position:sticky; top:0; float:right; font-size:26px; line-height:1; background:none; border:none; color:#8ab4f8; cursor:pointer; }
+.detail-sidebar { width:min(900px, 96vw); max-height:90vh; background:#0b1b2b; border:1px solid rgba(255,255,255,.12); border-radius:12px; overflow-y:auto; padding:24px 32px; position:relative; }
+.detail-close { position:absolute; top:10px; right:14px; font-size:26px; line-height:1; background:none; border:none; color:#8ab4f8; cursor:pointer; z-index:1; }
 .detail-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
 .detail-head .status-badge { margin-left:auto; }
 .detail-actions form { margin-bottom:10px; }
 .detail-actions textarea { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; resize:vertical; }
 .detail-actions .btn-approve, .detail-actions .btn-reject { margin-right:8px; }
 .detail-select { width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#0f2233; color:#e3f2fd; margin-bottom:6px; }
+
+.toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: bold;
+    z-index: 9999; opacity: 0; transition: opacity 0.3s;
+}
+.toast.success { background: #1b5e20; border: 1px solid #4caf50; }
+.toast.error { background: #b71c1c; border: 1px solid #ef5350; }
 </style>
 
 <script>
 const SCOPE = "{{ scope }}";
-const state = { page: 1, per_page: 15, q: "", type: ["SERAHAN", "PINJAMAN"], status: "", negeri: "", bahagian: "", sort: "created_at", order: "desc" };
+const state = { page: 1, per_page: 5, q: "", type: ["SERAHAN", "PINJAMAN"], status: "", negeri: "", bahagian: "", sort: "created_at", order: "desc" };
 let current = null;
 
 function $(id) { return document.getElementById(id); }
@@ -159,19 +172,25 @@ function badge(bt) {
 function renderRows(rows) {
     const tbody = $("rows");
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tiada rekod</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-text">Tiada rekod</td></tr>';
         return;
     }
     tbody.innerHTML = "";
     rows.forEach((r, i) => {
         const tr = document.createElement("tr");
+        const isDone = r.status === "Selesai";
+        const statusClass = isDone ? "status-badge status-done" : "status-badge";
+        const actionCell = isDone
+            ? '<td><span class="action-done">&#10004;</span></td>'
+            : '<td><span class="action-edit" onclick="event.stopPropagation(); openDetail(\'' + r.borang_type + '\', ' + r.id + ')">&#x270F;&#xFE0F;</span></td>';
         tr.innerHTML =
             '<td class="row-id">' + ((state.page - 1) * state.per_page + i + 1) + '</td>' +
             '<td>' + badge(r.borang_type) + '</td>' +
             '<td>' + esc(r.namapemohon) + '<br><small class="pager-total">' + esc(r.email) + '</small></td>' +
             '<td>' + esc(r.bahagian || "-") + '</td>' +
-            '<td><span class="status-badge">' + esc(r.status) + '</span>' + (r.overdue ? '<span class="badge-overdue">TERLEWAT</span>' : '') + '</td>' +
-            '<td>' + esc(r.created_at ? new Date(r.created_at).toLocaleString("ms-MY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-") + '</td>';
+            '<td>' + esc(r.created_at ? new Date(r.created_at).toLocaleString("ms-MY", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-") + '</td>' +
+            '<td><span class="' + statusClass + '">' + esc(r.status) + '</span>' + (r.overdue ? '<span class="badge-overdue">TERLEWAT</span>' : '') + '</td>' +
+            actionCell;
         tr.addEventListener("click", () => openDetail(r.borang_type, r.id));
         tbody.appendChild(tr);
     });
@@ -231,17 +250,20 @@ document.addEventListener("submit", function (e) {
     const form = e.target.closest("#detail-body form");
     if (!form || modalPending) return;
     modalPending = true;
+    const submitter = e.submitter;
     form.querySelectorAll("[type='submit']").forEach(b => b.disabled = true);
     e.preventDefault();
     const fd = new FormData(form);
-    if (e.submitter && e.submitter.name) fd.set(e.submitter.name, e.submitter.value);
+    if (submitter && submitter.name) fd.set(submitter.name, submitter.value);
+    const toastMsg = getActionMessage(submitter);
     fetch(form.getAttribute("action"), { method: "POST", body: fd, headers: { "X-Requested-With": "XMLHttpRequest" } })
         .then(r => {
             if (!r.ok) throw new Error("fail");
+            showToast(toastMsg, "success");
             return openDetail(current.bt, current.id);
         })
         .then(() => loadRows())
-        .catch(() => { $("detail-body").innerHTML = '<p class="empty-text">Ralat. Sila cuba lagi.</p>'; })
+        .catch(() => { showToast("Ralat. Sila cuba lagi.", "error"); $("detail-body").innerHTML = '<p class="empty-text">Ralat. Sila cuba lagi.</p>'; })
         .finally(() => {
             modalPending = false;
             form.querySelectorAll("[type='submit']").forEach(b => b.disabled = false);
@@ -250,6 +272,29 @@ document.addEventListener("submit", function (e) {
 });
 
 let debounce;
+
+function showToast(msg, type) {
+    let existing = document.getElementById("app-toast");
+    if (existing) existing.remove();
+    const t = document.createElement("div");
+    t.id = "app-toast";
+    t.className = "toast " + (type || "success");
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = "1"; });
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+const ACTION_MESSAGES = {
+    "approve": "Berjaya diluluskan!",
+    "reject": "Berjaya ditolak!",
+    "value": {}
+};
+
+function getActionMessage(btn) {
+    return "Tindakan berjaya!";
+}
+
 $("q").addEventListener("input", function () {
     clearTimeout(debounce);
     debounce = setTimeout(function () {
