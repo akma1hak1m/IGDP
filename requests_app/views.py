@@ -431,11 +431,15 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
     TAB = "background:#eceff1;font-weight:bold;padding:8px 14px;border:1px solid #d7dde1;white-space:nowrap;"
     TAV = "background:#ffffff;padding:8px 14px;border:1px solid #d7dde1;"
 
-    def row(label, value, highlight=False):
-        vstyle = (
-            "background:#e8f5e9;color:#1b5e20;font-weight:bold;padding:8px 14px;"
-            "border:1px solid #c8e6c9;" if highlight else TAV
-        )
+    REJECT_STATUSES = {"Tidak Mendapat Kelulusan Pengarah BITG", "Tidak Disokong Oleh Pengarah Bahagian", "Pembetulan Oleh PIC", "Pembetulan Oleh Pemohon"}
+
+    def row(label, value, highlight=False, danger=False):
+        if danger:
+            vstyle = "background:#ffebee;color:#b71c1c;font-weight:bold;padding:8px 14px;border:1px solid #ef9a9a;"
+        elif highlight:
+            vstyle = "background:#e8f5e9;color:#1b5e20;font-weight:bold;padding:8px 14px;border:1px solid #c8e6c9;"
+        else:
+            vstyle = TAV
         return f'<tr><td style="{TAB}">{label}</td><td style="{vstyle}">{value}</td></tr>'
 
     info_rows = "".join([
@@ -448,7 +452,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
     ])
 
     status_rows = "".join([
-        row("Status Semasa", status, highlight=True),
+        row("Status Semasa", status, highlight=(status not in REJECT_STATUSES), danger=(status in REJECT_STATUSES)),
         row("Peringkat", step_label(obj.borang_type, status)),
         row("Tarikh Status", tarikh_status),
         row("Tindakan Oleh", actor_line),
