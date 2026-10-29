@@ -177,7 +177,7 @@ def merged_requests():
     return combined
 
 
-SORT_FIELDS = {"id", "borang_type", "namapemohon", "email", "status", "bahagian", "created_at"}
+SORT_FIELDS = {"id", "record_no", "borang_type", "namapemohon", "email", "status", "bahagian", "created_at"}
 
 
 def request_base_segments(scope, user):
@@ -215,6 +215,8 @@ def request_base_segments(scope, user):
 def _sort_value(rec, field):
     if field == "id":
         return rec["id"]
+    if field == "record_no":
+        return rec.get("record_no") or 0
     if field == "borang_type":
         return rec["bt"] or ""
     if field == "bahagian":
@@ -233,6 +235,7 @@ def row_json(o):
     )
     return {
         "id": o.id,
+        "record_no": o.record_no,
         "borang_type": o.borang_type,
         "namapemohon": o.namapemohon,
         "email": o.email,
@@ -445,7 +448,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         return f'<tr><td style="{TAB}">{label}</td><td style="{vstyle}">{value}</td></tr>'
 
     info_rows = "".join([
-        row("No. Permohonan", f"<b>{obj.id}</b>"),
+        row("No. Permohonan", f"<b>{obj.record_no}</b>"),
         row("Jenis Permohonan", jenis),
         row("Nama Pemohon", obj.namapemohon or "-"),
         row("Agensi/Bahagian", bahagian),
@@ -537,7 +540,7 @@ def notify(obj, action, recipient_role, recipients, status, sebab=None, ulasan=N
         "Untuk makluman, permohonan berikut telah dikemukakan melalui Sistem Data Geospatial Bersepadu untuk tindakan dan perhatian pihak Tuan/Puan:\n"
         "\n"
         "MAKLUMAT PERMOHONAN\n"
-        f"No. Permohonan     : {obj.id}\n"
+        f"No. Permohonan     : {obj.record_no}\n"
         f"Jenis Permohonan   : {jenis}\n"
         f"Nama Pemohon       : {obj.namapemohon or '-'}\n"
         f"Agensi/Bahagian    : {bahagian}\n"
@@ -1207,14 +1210,17 @@ def requests_list(request):
         if types and bt not in types:
             continue
         if q:
-            qs = qs.filter(Q(id__icontains=q) | Q(namapemohon__icontains=q) | Q(email__icontains=q))
+            cond = Q(id__icontains=q) | Q(namapemohon__icontains=q) | Q(email__icontains=q)
+            if q.isdigit():
+                cond |= Q(record_no=int(q))
+            qs = qs.filter(cond)
         if statuses:
             qs = qs.filter(status__in=statuses)
         if negeris:
             qs = qs.filter(negeri__nama__in=negeris)
         if bahagians:
             qs = qs.filter(bahagian__nama__in=bahagians)
-        for row in qs.values("id", "namapemohon", "email", "status", "bahagian__nama", "negeri__nama", "created_at"):
+        for row in qs.values("id", "record_no", "namapemohon", "email", "status", "bahagian__nama", "negeri__nama", "created_at"):
             row["bt"] = bt
             row["bahagian"] = row.pop("bahagian__nama")
             row["negeri"] = row.pop("negeri__nama")

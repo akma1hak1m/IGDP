@@ -64,7 +64,7 @@ html, body{
 <table class="req-table">
     <thead>
         <tr>
-            <th>No</th>
+            <th data-sort="record_no">No</th>
             <th data-sort="borang_type">Jenis</th>
             <th data-sort="namapemohon">Pemohon</th>
             <th data-sort="bahagian">Bahagian</th>
@@ -212,7 +212,7 @@ function renderRows(rows) {
             ? '<td><span class="action-done">&#10004;</span></td>'
             : '<td><span class="action-edit" onclick="event.stopPropagation(); openDetail(\'' + r.borang_type + '\', ' + r.id + ')">&#x270F;&#xFE0F;</span></td>';
         tr.innerHTML =
-            '<td class="row-id">' + ((state.page - 1) * state.per_page + i + 1) + '</td>' +
+            '<td class="row-id">' + (r.record_no != null ? r.record_no : "-") + '</td>' +
             '<td>' + badge(r.borang_type) + '</td>' +
             '<td>' + esc(r.namapemohon) + '<br><small class="pager-total">' + esc(r.email) + '</small></td>' +
             '<td>' + esc(r.bahagian || "-") + '</td>' +

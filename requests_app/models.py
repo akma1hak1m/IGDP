@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -188,8 +188,37 @@ class AbstractRequest(models.Model):
 
     status = models.CharField(max_length=200, default="Borang Telah Dihantar")
 
+    record_no = models.PositiveIntegerField(null=True, blank=True, db_index=True, verbose_name="No. Permohonan")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if self.record_no is None:
+            from django.db import connection
+
+            def lockable(qs):
+                if connection.features.has_select_for_update:
+                    return qs.select_for_update()
+                return qs
+
+            with transaction.atomic():
+                last_s = (
+                    lockable(SerahanRequest.objects)
+                    .order_by("-record_no")
+                    .values_list("record_no", flat=True)
+                    .first()
+                    or 0
+                )
+                last_p = (
+                    lockable(PinjamanRequest.objects)
+                    .order_by("-record_no")
+                    .values_list("record_no", flat=True)
+                    .first()
+                    or 0
+                )
+                self.record_no = max(last_s, last_p) + 1
+        super().save(*args, **kwargs)
 
     class Meta:
         abstract = True

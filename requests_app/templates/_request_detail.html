@@ -5,7 +5,7 @@
     {% else %}
         <span class="badge-pinjaman">PINJAMAN</span>
     {% endif %}
-    <span class="request-id">NO {{ r.id }}</span>
+    <span class="request-id">NO {{ r.record_no }}</span>
     {% if r.overdue %}<span class="badge-overdue">TERLEWAT</span>{% endif %}
     <span class="status-badge">{{ r.status }}</span>
 </div>
@@ -106,15 +106,11 @@
 <div class="d-item"><b>No. Telefon: {{ r.telefon|default:"-" }}</b></div>
 <div class="d-item"><b>Bahagian: {{ r.bahagian.nama|default:"-" }}</b></div>
 {% if r.borang_type == "SERAHAN" %}
-<div class="d-item"><b>Tarikh: {{ r.tarikhprojek|default:"-" }}</b></div>
+<div class="d-item"><b>Tarikh Serahan: {{ r.tarikhprojek|default:"-" }}</b></div>
 {% else %}
-<div class="d-item"><b>Tarikh: {{ r.Tarikh|default:"-" }}</b></div>
-<div class="d-item"><b>Nama: {{ r.nama|default:"-" }}</b></div>
-<div class="d-item"><b>Pemohon Setuju: {% if r.Setuju %}Ya{% else %}Tidak{% endif %}</b></div>
+<div class="d-item"><b>Tarikh Permohonan: {{ r.Tarikh|default:"-" }}</b></div>
 {% endif %}
-<div class="d-item"><b>Tarikh Hantar: {{ r.created_at|date:"d/m/Y H:i" }}</b></div>
 <div class="d-item"><b>PIC: {% if r.pic %}{{ r.pic.username }}{% else %}-{% endif %}</b></div>
-{% if r.deadline %}<div class="d-item"><b>Tarikh Akhir Penyediaan: {{ r.deadline|date:"d/m/Y H:i" }}</b></div>{% endif %}
 {% if r.uploaded_file %}
 <div class="d-item d-wide"><b>Fail Data:</b> <a href="{{ r.uploaded_file.url }}" target="_blank" class="btn-assign">Muat Turun Data</a></div>
 {% endif %}
@@ -179,6 +175,17 @@
 <div class="d-item"><b>Nama Projek: {{ r.namaprojek|default:"-" }}</b></div>
 {% endif %}
 </div>
+</div>
+{% endif %}
+
+{% if r.borang_type == "PINJAMAN" %}
+<div class="detail-section">
+<h4>Pemohon Setuju</h4>
+<div class="d-item"><b>Pemohon Setuju: {% if r.Setuju %}Ya{% else %}Tidak{% endif %}</b></div>
+<label style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;cursor:default;">
+<input type="checkbox" disabled{% if r.Setuju %} checked{% endif %} style="margin-top:3px;flex-shrink:0;pointer-events:none;">
+<span class="declaration-text" style="font-size:11px;line-height:1.45;margin-top:0;">Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan peribadi saya. Tindakan di Bawah Jawatankuasa Disiplin dan Tatatertib Agensi Angkasa Malaysia (MYSA) boleh diambil ke atas saya sekiranya saya melanggar syarat di atas.</span>
+</label>
 </div>
 {% endif %}
 

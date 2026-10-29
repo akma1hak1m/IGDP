@@ -1056,9 +1056,14 @@ class FullDetailPopupTest(FlowDataMixin, TestCase):
         self.assertIn("Tujuan Pinjaman / Kegunaan Data / Projek", html)
         # applicant fields
         self.assertIn("0161112222", html)
-        self.assertIn("2026-05-20", html)
+        self.assertIn("Tarikh Permohonan: 2026-05-20", html)
         self.assertIn("Pemohon Setuju: Ya", html)
-        self.assertIn("Tarikh Hantar:", html)
+        # Pemohon Setuju must appear immediately before Sejarah Status
+        self.assertNotIn("Tarikh Hantar:", html)
+        self.assertNotIn("Tarikh Akhir Penyediaan", html)
+        self.assertNotIn("Nama:", html.replace("Nama Pemohon:", ""))
+        if "Sejarah Status" in html:
+            self.assertLess(html.index("Pemohon Setuju"), html.index("Sejarah Status"))
         # components
         self.assertIn("Jalan, DEM", html)
         # per-category kawasan incl. tahun
@@ -1077,6 +1082,35 @@ class FullDetailPopupTest(FlowDataMixin, TestCase):
         # serahan-only fields must not leak in
         self.assertNotIn("Maklumat Data", html)
         self.assertNotIn("Klasifikasi Data", html)
+
+    def test_pinjam_popup_consent_snapshot_when_ticked(self):
+        _, p = self.submit_pinjam(Setuju="on", Tarikh="2026-07-01")
+        html = self.popup(p)
+        declaration = (
+            "Bahawasanya saya berjanji tidak akan menyalin data-data tersebut bagi kegunaan "
+            "peribadi saya. Tindakan di Bawah Jawatankuasa Disiplin dan Tatatertib Agensi "
+            "Angkasa Malaysia (MYSA) boleh diambil ke atas saya sekiranya saya melanggar "
+            "syarat di atas."
+        )
+        # snapshot: stored value + original statement + ticked checkbox
+        self.assertIn("Pemohon Setuju: Ya", html)
+        self.assertIn(declaration, html)
+        self.assertIn('type="checkbox" disabled checked', html)
+        # immediately before Sejarah Status
+        self.assertLess(html.index("Pemohon Setuju"), html.index("Sejarah Status"))
+        # no other section heading between consent block and Sejarah Status
+        between = html[html.index("syarat di atas."):html.index("Sejarah Status")]
+        self.assertEqual(between.count("<h4>"), 1)  # only Sejarah Status' own heading
+
+    def test_pinjam_popup_consent_snapshot_when_unticked(self):
+        _, p = self.submit_pinjam(Setuju="", Tarikh="2026-07-02")
+        p.refresh_from_db()
+        self.assertFalse(p.Setuju)
+        html = self.popup(p)
+        self.assertIn("Pemohon Setuju: Tidak", html)
+        # must NOT appear ticked
+        self.assertNotIn('type="checkbox" disabled checked', html)
+        self.assertIn('type="checkbox" disabled', html)
 
     def test_pinjam_legacy_record_without_kawasan_displays_correctly(self):
         p = PinjamanRequest.objects.create(
@@ -1122,8 +1156,8 @@ class FullDetailPopupTest(FlowDataMixin, TestCase):
         self.assertIn("Maklumat Data", html)
         # applicant fields
         self.assertIn("0169998888", html)
-        self.assertIn("Tarikh: 2026-06-15", html)
-        self.assertIn("Tarikh Hantar:", html)
+        self.assertIn("Tarikh Serahan: 2026-06-15", html)
+        self.assertNotIn("Tarikh Hantar:", html)
         # components incl. lain text
         self.assertIn("Jalan, Sungai", html)
         # kawasan incl. lain text
@@ -1165,3 +1199,69 @@ class FullDetailPopupTest(FlowDataMixin, TestCase):
         ).content.decode()
         self.assertIn("Sokong", html)
         self.assertIn("Tidak Sokong", html)
+
+
+class RecordNumberingTest(FlowDataMixin, TestCase):
+    """record_no must be a global sequential number across both models."""
+
+    def test_record_no_sequential_across_both_models(self):
+        _, s1 = self.submit_serah(tarikhprojek="2026-01-01")
+        _, p1 = self.submit_pinjam(Tarikh="2026-01-01")
+        _, s2 = self.submit_serah(tarikhprojek="2026-01-02")
+        _, p2 = self.submit_pinjam(Tarikh="2026-01-02")
+        _, s3 = self.submit_serah(tarikhprojek="2026-01-03")
+        self.assertEqual(
+            [s1.record_no, p1.record_no, s2.record_no, p2.record_no, s3.record_no],
+            [1, 2, 3, 4, 5],
+        )
+
+    def test_record_no_survives_resubmit(self):
+        _, s = self.submit_serah()
+        original = s.record_no
+        # simulate edit-resubmit path: obj.save() again
+        s.save()
+        s.refresh_from_db()
+        self.assertEqual(s.record_no, original)
+
+    def test_record_no_restarts_when_all_deleted(self):
+        _, _ = self.submit_serah()
+        _, _ = self.submit_pinjam()
+        SerahanRequest.objects.all().delete()
+        PinjamanRequest.objects.all().delete()
+        _, s = self.submit_serah()
+        _, p = self.submit_pinjam()
+        self.assertEqual([s.record_no, p.record_no], [1, 2])
+
+    def test_popup_header_shows_record_no_not_pk(self):
+        _, p = self.submit_pinjam()
+        html = self.c(self.pemohon).get(
+            reverse("request_detail", args=[p.borang_type, p.id])
+        ).content.decode()
+        self.assertIn(f"NO {p.record_no}", html)
+
+    def test_popup_header_differs_from_pk_after_manual_offset(self):
+        _, p = self.submit_pinjam()
+        # force record_no far away from pk to prove popup uses record_no
+        PinjamanRequest.objects.filter(pk=p.pk).update(record_no=42)
+        p.refresh_from_db()
+        html = self.c(self.pemohon).get(
+            reverse("request_detail", args=[p.borang_type, p.id])
+        ).content.decode()
+        self.assertIn("NO 42", html)
+        if p.id != 42:
+            self.assertNotIn(f"NO {p.id}</span>", html)
+
+    def test_requests_list_rows_carry_record_no(self):
+        _, p = self.submit_pinjam()
+        resp = self.c(self.pemohon).get(
+            reverse("requests_list"), {"scope": "my"}
+        ).json()
+        row = next(r for r in resp["rows"] if r["id"] == p.id)
+        self.assertEqual(row["record_no"], p.record_no)
+
+    def test_search_by_record_no(self):
+        _, p = self.submit_pinjam()
+        resp = self.c(self.pemohon).get(
+            reverse("requests_list"), {"scope": "my", "q": str(p.record_no)}
+        ).json()
+        self.assertEqual([r["id"] for r in resp["rows"]], [p.id])
