@@ -1,3 +1,4 @@
+<div class="detail-sticky">
 <div class="detail-head">
     {% if r.borang_type == "SERAHAN" %}
         <span class="badge-type">SERAHAN</span>
@@ -95,51 +96,96 @@
     {% endif %}
 
 </div>
-
-<div class="details-box">
-    <p><b>Nama Pemohon:</b></p><p>{{ r.namapemohon }}</p>
-    <p><b>Emel:</b></p><p>{{ r.email }}</p>
-    <p><b>No. Telefon:</b></p><p>{{ r.telefon }}</p>
-    <p><b>Bahagian:</b></p><p>{{ r.bahagian.nama|default:"-" }}</p>
-    <p><b>Komponen Data:</b></p><p>{{ r.komponen_data }}</p>
-    <p><b>Negeri:</b></p><p>{{ r.negeri }}</p>
-    <p><b>Daerah:</b></p><p>{% firstof r.daerah r.daerah_text "-" %}</p>
-    <p><b>Mukim:</b></p><p>{% firstof r.mukim r.mukim_text "-" %}</p>
-    <p><b>Indeks Peta Topo:</b></p><p>{{ r.indeks }}</p>
-
-    {% if r.borang_type == "SERAHAN" %}
-    <p><b>Jenis:</b></p><p>{{ r.jenis_data }}</p>
-    <p><b>Format:</b></p><p>{{ r.format_data }}</p>
-    <p><b>Unjuran/Koordinat:</b></p><p>{{ r.unjuranKoordinat_data }}</p>
-    <p><b>Sumber:</b></p><p>{{ r.sumber_data }}</p>
-    <p><b>Meta Data:</b></p><p>{{ r.meta_data }}</p>
-    <p><b>Jenis Data:</b></p><p>{{ r.jenisdataformat }}</p>
-    <p><b>Klasifikasi Data:</b></p><p>{{ r.klasifikasidata }}</p>
-    {% if r.namaagensi or r.namaprojek or r.tarikhprojek %}
-    <p><b>Agensi Kerjasama:</b></p><p>{{ r.namaagensi }}</p>
-    <p><b>Nama Projek:</b></p><p>{{ r.namaprojek }}</p>
-    <p><b>Tarikh Projek:</b></p><p>{{ r.tarikhprojek }}</p>
-    {% endif %}
-    {% else %}
-    <p><b>Tujuan Pinjaman:</b></p><p>{{ r.tujuan }}</p>
-    <p><b>Catatan:</b></p><p>{{ r.cacatan }}</p>
-    <p><b>Nama:</b></p><p>{{ r.nama }}</p>
-    <p><b>Tarikh:</b></p><p>{{ r.Tarikh }}</p>
-    {% if r.deadline %}<p><b>Tarikh Akhir Penyediaan:</b></p><p>{{ r.deadline|date:"d/m/Y H:i" }}</p>{% endif %}
-    {% endif %}
-
-    <p><b>PIC:</b></p><p>{% if r.pic %}{{ r.pic.username }}{% else %}-{% endif %}</p>
-
-    {% if r.uploaded_file %}
-    <p><b>Fail Data:</b></p>
-    <p><a href="{{ r.uploaded_file.url }}" target="_blank" class="btn-assign">Muat Turun Data</a></p>
-    {% endif %}
 </div>
 
+<div class="detail-section">
+<h4>Maklumat Pemohon</h4>
+<div class="detail-grid">
+<div class="d-item"><b>Nama Pemohon: {{ r.namapemohon|default:"-" }}</b></div>
+<div class="d-item"><b>Emel: {{ r.email|default:"-" }}</b></div>
+<div class="d-item"><b>No. Telefon: {{ r.telefon|default:"-" }}</b></div>
+<div class="d-item"><b>Bahagian: {{ r.bahagian.nama|default:"-" }}</b></div>
+{% if r.borang_type == "SERAHAN" %}
+<div class="d-item"><b>Tarikh: {{ r.tarikhprojek|default:"-" }}</b></div>
+{% else %}
+<div class="d-item"><b>Tarikh: {{ r.Tarikh|default:"-" }}</b></div>
+<div class="d-item"><b>Nama: {{ r.nama|default:"-" }}</b></div>
+<div class="d-item"><b>Pemohon Setuju: {% if r.Setuju %}Ya{% else %}Tidak{% endif %}</b></div>
+{% endif %}
+<div class="d-item"><b>Tarikh Hantar: {{ r.created_at|date:"d/m/Y H:i" }}</b></div>
+<div class="d-item"><b>PIC: {% if r.pic %}{{ r.pic.username }}{% else %}-{% endif %}</b></div>
+{% if r.deadline %}<div class="d-item"><b>Tarikh Akhir Penyediaan: {{ r.deadline|date:"d/m/Y H:i" }}</b></div>{% endif %}
+{% if r.uploaded_file %}
+<div class="d-item d-wide"><b>Fail Data:</b> <a href="{{ r.uploaded_file.url }}" target="_blank" class="btn-assign">Muat Turun Data</a></div>
+{% endif %}
+</div>
+</div>
+
+<div class="detail-section">
+<h4>Komponen & Jenis Data & Kawasan</h4>
+{% if r.borang_type == "PINJAMAN" and kawasan_display %}
+<table class="kawasan-detail-table">
+<thead><tr><th>Kategori</th><th>Komponen / Jenis Data</th><th>Negeri</th><th>Daerah</th><th>Mukim</th><th>Tahun</th></tr></thead>
+<tbody>
+{% for row in kawasan_display %}
+<tr>
+<td>{{ row.kategori }}</td>
+<td>{{ row.komponen }}</td>
+<td>{{ row.negeri }}</td>
+<td>{{ row.daerah }}</td>
+<td>{{ row.mukim }}</td>
+<td>{{ row.tahun }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<div class="detail-grid">
+<div class="d-item d-wide"><b>Komponen Data:</b> {{ r.komponen_data|default:"-" }}</div>
+<div class="d-item"><b>Negeri: {{ r.negeri|default:"-" }}</b></div>
+<div class="d-item"><b>Daerah: {% firstof r.daerah r.daerah_text "-" %}</b></div>
+<div class="d-item"><b>Mukim: {% firstof r.mukim r.mukim_text "-" %}</b></div>
+{% if r.borang_type == "PINJAMAN" %}<div class="d-item"><b>Tahun: {{ r.tahun|default:"-" }}</b></div>{% endif %}
+</div>
+{% endif %}
+{% if r.indeks %}
+<div class="detail-grid"><div class="d-item d-wide"><b>Indeks Peta Topo: {{ r.indeks }}</b></div></div>
+{% endif %}
+</div>
+
+{% if r.borang_type == "PINJAMAN" %}
+<div class="detail-section">
+<h4>Tujuan Pinjaman / Kegunaan Data / Projek</h4>
+<div class="detail-grid">
+<div class="d-item d-wide"><b>Tujuan Pinjaman:</b> {{ r.tujuan|default:"-" }}</div>
+<div class="d-item d-wide"><b>Catatan:</b> {{ r.cacatan|default:"-" }}</div>
+</div>
+</div>
+{% endif %}
+
+{% if r.borang_type == "SERAHAN" %}
+<div class="detail-section">
+<h4>Maklumat Data</h4>
+<div class="detail-grid">
+<div class="d-item"><b>Jenis: {{ r.jenis_data|default:"-" }}</b></div>
+<div class="d-item"><b>Format: {{ r.format_data|default:"-" }}</b></div>
+<div class="d-item"><b>Unjuran/Koordinat: {{ r.unjuranKoordinat_data|default:"-" }}</b></div>
+<div class="d-item"><b>Sumber: {{ r.sumber_data|default:"-" }}</b></div>
+<div class="d-item"><b>Jenis Data: {{ r.jenisdataformat|default:"-" }}</b></div>
+<div class="d-item"><b>Klasifikasi Data: {{ r.klasifikasidata|default:"-" }}</b></div>
+<div class="d-item d-wide"><b>Meta Data:</b> {{ r.meta_data|default:"-" }}</div>
+{% if r.namaagensi or r.namaprojek %}
+<div class="d-item"><b>Agensi Kerjasama: {{ r.namaagensi|default:"-" }}</b></div>
+<div class="d-item"><b>Nama Projek: {{ r.namaprojek|default:"-" }}</b></div>
+{% endif %}
+</div>
+</div>
+{% endif %}
+
 {% if r.status_logs %}
-<div class="details-box">
-    <p><b>Sejarah Status:</b></p>
-    {% include "timeline.html" with logs=r.status_logs r=r %}
+<div class="detail-section">
+<h4>Sejarah Status</h4>
+{% include "timeline.html" with logs=r.status_logs r=r %}
 </div>
 {% endif %}
 

@@ -24,7 +24,9 @@ def make_user(username, group_name, bahagian=None):
     return user
 
 
-class FlowTestBase(TestCase):
+class FlowDataMixin:
+    """Shared fixtures, clients and form-payload helpers (not a TestCase)."""
+
     @classmethod
     def setUpTestData(cls):
         cls.bs, _ = Bahagian.objects.get_or_create(nama="BS")
@@ -55,7 +57,6 @@ class FlowTestBase(TestCase):
             "format_data": ["Shapefile"],
             "unjuranKoordinat_data": ["RSO"],
             "sumber_data": ["Peta Topo"],
-            "indeks": "NB-1",
             "namaagensi": "Agensi Uji",
             "namaprojek": "Projek Uji",
             "tarikhprojek": "2026-01-01",
@@ -70,21 +71,20 @@ class FlowTestBase(TestCase):
             "namapemohon": "Ali Pinjam",
             "email": "ali@mysa.local",
             "telefon": "0123456789",
-            "negeri": "SABAH",
-            "daerah": "KOTA KINABALU",
-            "mukim": "MUKIM",
             "komponen_data": ["Jalan"],
-            "indeks": "SB-1",
+            "kat_0_negeri": "SABAH",
+            "kat_0_daerah": "KOTA KINABALU",
+            "kat_0_mukim": "MUKIM",
+            "kat_0_tahun": "2026",
             "tujuan": "Kajian tesis",
             "cacatan": "Tiada",
             "Setuju": "on",
-            "nama": "Ali Pinjam",
             "Tarikh": "2026-01-01",
         }
         data.update(over)
         return data
 
-    # ---------- flow helpers ----------
+    # ---------- submission helpers ----------
 
     def submit_serah(self, **over):
         r = self.c(self.pemohon).post(
@@ -99,6 +99,10 @@ class FlowTestBase(TestCase):
         )
         obj = PinjamanRequest.objects.latest("id")
         return r, obj
+
+
+class FlowTestBase(FlowDataMixin, TestCase):
+    # ---------- flow helpers ----------
 
     def approve(self, obj, user, **data):
         return self.c(user).post(
@@ -461,7 +465,7 @@ class FlowTestBase(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "HANTAR SEMULA")
-        self.assertContains(resp, 'name="komponen_data" value="Jalan" checked')
+        self.assertContains(resp, 'name="komponen_data" value="Jalan" data-kat="0" checked')
 
     def test_pinjam_timeline_entries(self):
         _, p = self.submit_pinjam()
@@ -549,7 +553,8 @@ class FlowTestBase(TestCase):
 
     def test_pinjam_lain_kawasan_stored_as_text(self):
         _, p = self.submit_pinjam(
-            daerah="LAIN", daerah_lain="Daerah Khas", mukim="LAIN", mukim_lain="Mukim Khas"
+            kat_0_daerah="LAIN", kat_0_daerah_lain="Daerah Khas",
+            kat_0_mukim="LAIN", kat_0_mukim_lain="Mukim Khas",
         )
         self.assertIsNone(p.daerah)
         self.assertEqual(p.daerah_text, "Daerah Khas")
@@ -876,3 +881,287 @@ class FlowTestBase(TestCase):
         self.approve(s2, self.bitg, action="approve", ulasan="OK")
         s2.refresh_from_db()
         self.assertEqual(s2.status, "Mendapat Kelulusan Pengarah BITG")
+
+
+class AdminUserSessionIsolationTest(TestCase):
+    """Admin (/admin) and normal-user (/) logins must be independent."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.superuser = User.objects.create_superuser(
+            "sysadmin", "sysadmin@mysa.local", PASSWORD
+        )
+        cls.staff = User.objects.create_user(
+            "staffadmin", "staffadmin@mysa.local", PASSWORD
+        )
+        cls.staff.is_staff = True
+        cls.staff.save()
+        from django.contrib.auth.models import Permission
+
+        cls.staff.user_permissions.add(
+            Permission.objects.get(codename="view_user", content_type__app_label="auth")
+        )
+        cls.regular = User.objects.create_user(
+            "regular", "regular@mysa.local", PASSWORD
+        )
+
+    def admin_login(self, c, username="sysadmin"):
+        return c.post(
+            "/admin/login/",
+            {"username": username, "password": PASSWORD, "next": "/admin/"},
+        )
+
+    def assert_admin_logged_in(self, c):
+        r = c.get("/admin/", follow=True)
+        self.assertEqual(r.status_code, 200)
+
+    def assert_admin_logged_out(self, c):
+        r = c.get("/admin/")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/admin/login/", r.url)
+
+    def test_admin_login_does_not_grant_user_ui_access(self):
+        c = Client()
+        r = self.admin_login(c)
+        self.assertEqual(r.status_code, 302)
+        self.assert_admin_logged_in(c)
+        # user UI still requires a separate login
+        r2 = c.get(reverse("home"))
+        self.assertEqual(r2.status_code, 302)
+        self.assertTrue(r2.url.startswith("/"))
+
+    def test_user_login_does_not_grant_admin_access(self):
+        c = Client()
+        c.post(reverse("login"), {"username": "regular", "password": PASSWORD})
+        self.assertEqual(c.get(reverse("home")).status_code, 200)
+        self.assert_admin_logged_out(c)
+
+    def test_admin_logout_preserves_user_session(self):
+        c = Client()
+        c.post(reverse("login"), {"username": "regular", "password": PASSWORD})
+        self.admin_login(c)
+        r = c.post("/admin/logout/")
+        self.assertEqual(r.status_code, 302)
+        self.assert_admin_logged_out(c)
+        # user session untouched
+        self.assertEqual(c.get(reverse("home")).status_code, 200)
+
+    def test_user_logout_preserves_admin_session(self):
+        c = Client()
+        self.admin_login(c)
+        c.post(reverse("login"), {"username": "regular", "password": PASSWORD})
+        r = c.get(reverse("logout"))
+        self.assertEqual(r.status_code, 302)
+        # admin session untouched
+        self.assert_admin_logged_in(c)
+        # user session gone
+        r2 = c.get(reverse("home"))
+        self.assertEqual(r2.status_code, 302)
+
+    def test_staff_user_can_login_admin(self):
+        c = Client()
+        r = self.admin_login(c, username="staffadmin")
+        self.assertEqual(r.status_code, 302)
+        self.assert_admin_logged_in(c)
+
+    def test_non_staff_user_cannot_login_admin(self):
+        c = Client()
+        r = self.admin_login(c, username="regular")
+        # invalid form re-rendered; no admin session created
+        self.assertEqual(r.status_code, 200)
+        self.assert_admin_logged_out(c)
+
+    def test_direct_access_to_admin_pages_requires_admin_login(self):
+        c = Client()
+        # even a logged-in staff user-session must not open admin pages
+        c.post(reverse("login"), {"username": "staffadmin", "password": PASSWORD})
+        self.assertEqual(c.get(reverse("home")).status_code, 200)
+        r = c.get("/admin/auth/user/")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/admin/login/", r.url)
+
+
+class FormStructureTest(FlowDataMixin, TestCase):
+    """Hantar must sit inside <form> inside .form-card (natural scroll flow)."""
+
+    def form_inner(self, route):
+        r = self.c(self.pemohon).get(route)
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        start = html.index("<form")
+        end = html.index("</form>")
+        self.assertGreater(end, start, "missing </form>")
+        return html[start:end]
+
+    def test_pinjam_submit_inside_form(self):
+        inner = self.form_inner(reverse("borang_pinjaman"))
+        self.assertIn('class="form-submit"', inner)
+        self.assertIn("HANTAR", inner)
+
+    def test_serah_submit_inside_form(self):
+        inner = self.form_inner(reverse("borang_serahan"))
+        self.assertIn('class="form-submit"', inner)
+
+    def test_pinjam_no_submit_elements_after_form(self):
+        r = self.c(self.pemohon).get(reverse("borang_pinjaman"))
+        html = r.content.decode()
+        after = html.split("</form>", 1)[1]
+        self.assertNotIn('class="form-submit"', after)
+        self.assertNotIn('class="divider-line"', after)
+
+    def test_serah_no_submit_elements_after_form(self):
+        r = self.c(self.pemohon).get(reverse("borang_serahan"))
+        html = r.content.decode()
+        after = html.split("</form>", 1)[1]
+        self.assertNotIn('class="form-submit"', after)
+
+
+class FullDetailPopupTest(FlowDataMixin, TestCase):
+    """The Tindakan popup must show the complete submitted record."""
+
+    def popup(self, obj, as_user=None):
+        return self.c(as_user or self.pemohon).get(
+            reverse("request_detail", args=[obj.borang_type, obj.id])
+        ).content.decode()
+
+    # ---------- pinjaman ----------
+
+    def test_pinjam_popup_shows_complete_submission(self):
+        _, p = self.submit_pinjam(
+            komponen_data=["Jalan", "DEM"],
+            telefon="0161112222",
+            tujuan="Tujuan penuh ujian",
+            cacatan="Catatan penuh ujian",
+            Tarikh="2026-05-20",
+            Setuju="on",
+            kat_0_negeri="SABAH",
+            kat_0_daerah="KOTA KINABALU",
+            kat_0_mukim="LIQUAM",
+            kat_0_tahun="2026",
+            kat_1_negeri="SELANGOR",
+            kat_1_daerah="GOMBAK",
+            kat_1_mukim="BATU",
+            kat_1_tahun="2025",
+        )
+        p.refresh_from_db()
+        self.assertEqual(p.telefon, "0161112222")
+        self.assertEqual(p.kawasan["DATA ASAS"]["tahun"], "2026")
+        self.assertEqual(p.kawasan["FASILITI"]["mukim"], "BATU")
+
+        html = self.popup(p)
+        # section headings
+        self.assertIn("Maklumat Pemohon", html)
+        self.assertIn("Komponen & Jenis Data", html)
+        self.assertIn("Kawasan", html)
+        self.assertIn("Tujuan Pinjaman / Kegunaan Data / Projek", html)
+        # applicant fields
+        self.assertIn("0161112222", html)
+        self.assertIn("2026-05-20", html)
+        self.assertIn("Pemohon Setuju: Ya", html)
+        self.assertIn("Tarikh Hantar:", html)
+        # components
+        self.assertIn("Jalan, DEM", html)
+        # per-category kawasan incl. tahun
+        self.assertIn("DATA ASAS", html)
+        self.assertIn("FASILITI", html)
+        self.assertIn("SABAH", html)
+        self.assertIn("KOTA KINABALU", html)
+        self.assertIn("LIQUAM", html)
+        self.assertIn("SELANGOR", html)
+        self.assertIn("GOMBAK", html)
+        self.assertIn("BATU", html)
+        self.assertIn("2025", html)
+        # purpose
+        self.assertIn("Tujuan penuh ujian", html)
+        self.assertIn("Catatan penuh ujian", html)
+        # serahan-only fields must not leak in
+        self.assertNotIn("Maklumat Data", html)
+        self.assertNotIn("Klasifikasi Data", html)
+
+    def test_pinjam_legacy_record_without_kawasan_displays_correctly(self):
+        p = PinjamanRequest.objects.create(
+            pemohon=self.pemohon,
+            namapemohon="Pemohon Lama",
+            email="lama@mysa.local",
+            komponen_data="Jalan",
+            tujuan="Tujuan lama",
+            tahun="2024",
+            kawasan=None,
+            status="Borang Telah Dihantar",
+        )
+        html = self.popup(p)
+        self.assertIn("Negeri:", html)
+        self.assertIn("Tahun: 2024", html)
+        self.assertIn("Tujuan lama", html)
+        self.assertNotIn("Kawasan Mengikut Kategori", html)
+
+    # ---------- serahan ----------
+
+    def test_serah_popup_shows_complete_submission(self):
+        _, s = self.submit_serah(
+            telefon="0169998888",
+            komponen_data=["Jalan", "Sungai"],
+            jenis_data=["Poligon", "Garisan"],
+            jenis_lain="Jenis Lain ujian",
+            meta_data="Meta penuh ujian",
+            klasifikasidata=["Awam"],
+            jenisdataformat=["Digital", "Peta"],
+            namaagensi="Agensi Penuh Ujian",
+            namaprojek="Projek Penuh Ujian",
+            tarikhprojek="2026-06-15",
+            daerah="LAIN",
+            daerah_lain="Daerah Khas Ujian",
+            mukim="LAIN",
+            mukim_lain="Mukim Khas Ujian",
+        )
+        html = self.popup(s)
+        # section headings
+        self.assertIn("Maklumat Pemohon", html)
+        self.assertIn("Komponen & Jenis Data", html)
+        self.assertIn("Kawasan", html)
+        self.assertIn("Maklumat Data", html)
+        # applicant fields
+        self.assertIn("0169998888", html)
+        self.assertIn("Tarikh: 2026-06-15", html)
+        self.assertIn("Tarikh Hantar:", html)
+        # components incl. lain text
+        self.assertIn("Jalan, Sungai", html)
+        # kawasan incl. lain text
+        self.assertIn("Daerah Khas Ujian", html)
+        self.assertIn("Mukim Khas Ujian", html)
+        # data details
+        self.assertIn("Poligon", html)
+        self.assertIn("Garisan", html)
+        self.assertIn("Jenis Lain ujian", html)
+        self.assertIn("Meta penuh ujian", html)
+        self.assertIn("Awam", html)
+        self.assertIn("Digital", html)
+        self.assertIn("Agensi Penuh Ujian", html)
+        self.assertIn("Projek Penuh Ujian", html)
+        # pinjaman-only fields must not leak in
+        self.assertNotIn("Pemohon Setuju", html)
+        self.assertNotIn("Tujuan Pinjaman", html)
+        self.assertNotIn("Kawasan Mengikut Kategori", html)
+
+    # ---------- no mixing ----------
+
+    def test_popup_shows_correct_record_not_mixed(self):
+        _, p = self.submit_pinjam(tujuan="ZZZ-TUJUAN-UNIK")
+        _, s = self.submit_serah(namaprojek="YYY-PROJEK-UNIK")
+
+        html_p = self.popup(p)
+        html_s = self.popup(s)
+        self.assertIn("ZZZ-TUJUAN-UNIK", html_p)
+        self.assertNotIn("YYY-PROJEK-UNIK", html_p)
+        self.assertIn("YYY-PROJEK-UNIK", html_s)
+        self.assertNotIn("ZZZ-TUJUAN-UNIK", html_s)
+
+    # ---------- actions preserved ----------
+
+    def test_popup_action_buttons_preserved(self):
+        _, s = self.submit_serah()
+        html = self.c(self.pb).get(
+            reverse("request_detail", args=["SERAHAN", s.id])
+        ).content.decode()
+        self.assertIn("Sokong", html)
+        self.assertIn("Tidak Sokong", html)

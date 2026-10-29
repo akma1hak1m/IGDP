@@ -274,6 +274,9 @@ class PinjamanRequest(AbstractRequest):
     nama = models.CharField(max_length=200, blank=True, null=True)
     Tarikh = models.CharField(max_length=50, blank=True, null=True)
 
+    tahun = models.CharField(max_length=4, blank=True, null=True)
+    kawasan = models.JSONField(blank=True, null=True)
+
     deadline = models.DateTimeField(blank=True, null=True)
 
     @property

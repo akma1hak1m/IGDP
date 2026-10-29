@@ -41,6 +41,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
 }
 
+.form-group input.date-input{
+    padding:18px 22px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.06);
+    color:#ffffff;
+    border:1px solid rgba(255,255,255,0.12);
+    box-sizing:border-box;
+    color-scheme:dark;
+}
+
 .toast {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
     padding: 12px 24px; border-radius: 8px; color: #fff; font-size: 14px; font-weight: bold;
@@ -87,6 +97,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <div class="form-group">
 <label>No. Telefon<span class="req-star">*</span></label>
 <input type="text" name="telefon" value="{% if editing %}{{ obj.telefon|default:"" }}{% else %}{{ applicant_phone }}{% endif %}" placeholder="No. telefon (jika belum lengkap)" required>
+</div>
+
+<div class="form-group">
+<label>Tarikh<span class="req-star">*</span></label>
+<input type="date" name="tarikhprojek" value="{% if editing %}{{ obj.tarikhprojek|default:"" }}{% endif %}" class="date-input" required>
 </div>
 
 </div>
@@ -249,14 +264,6 @@ placeholder="Masukkan Mukim"
 style="display:none; margin-top:10px;">
 </div>
 
-<div class="form-group">
-<label>Indeks Peta Topo</label>
-<input type="text"
-name="indeks"
-value="{% if editing %}{{ obj.indeks|default:"" }}{% endif %}"
-placeholder="Contoh: NB-47-2">
-</div>
-
 </div>
 
 <div class="divider-line"></div>
@@ -340,7 +347,6 @@ placeholder="Contoh: NB-47-2">
     <h4>AGENSI KERJASAMA / AGENSI LUAR <span class="req-star">*</span></h4>
     <input type="text" name="namaagensi" value="{% if editing %}{{ obj.namaagensi|default:"" }}{% endif %}" placeholder="Nyatakan Nama Agensi Kerjasama/Luar" required>
     <input type="text" name="namaprojek" value="{% if editing %}{{ obj.namaprojek|default:"" }}{% endif %}" placeholder="Nyatakan Nama Projek" required>
-    <input type="date" name="tarikhprojek" value="{% if editing %}{{ obj.tarikhprojek|default:"" }}{% endif %}" class="date-input" required>
     </div>
 
 
@@ -368,7 +374,7 @@ placeholder="Contoh: NB-47-2">
     <div class="meta-box">
         <h4>Klasifikasi Data<span class="req-star">*</span></h4>
         <label><input type="checkbox" name="klasifikasidata" value="Terhad" {% if editing and "Terhad" in prefill.klasifikasidata %}checked{% endif %}> Terhad</label>
-        <label><input type="checkbox" name="klasifikasidata" value="Tak Terhad" {% if editing and "Tak Terhad" in prefill.klasifikasidata %}checked{% endif %}> Tak Terhad</label>
+        <label><input type="checkbox" name="klasifikasidata" value="Tidak Terhad" {% if editing and "Tidak Terhad" in prefill.klasifikasidata %}checked{% endif %}> Tidak Terhad</label>
     </div>
 
 </div>

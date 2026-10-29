@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, HttpResponseNotFound, JsonResponse
 from django.contrib.auth.models import User, Group
@@ -14,6 +14,8 @@ from django.urls import reverse
 from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
+import json
+import re
 from .models import (
     LoginLog,
     Negeri,
@@ -603,8 +605,196 @@ def user_bahagian(user):
     return profile.bahagian if profile else None
 
 
-SERAH_SIG_KEYS = ["komponen_data", "daerah_text", "mukim_text", "indeks", "jenis_data", "format_data", "unjuranKoordinat_data", "sumber_data", "meta_data", "namaagensi", "namaprojek", "tarikhprojek", "jenisdataformat", "klasifikasidata"]
-PINJAM_SIG_KEYS = ["komponen_data", "daerah_text", "mukim_text", "indeks", "tujuan", "cacatan", "Setuju", "nama", "Tarikh"]
+SERAH_SIG_KEYS = ["komponen_data", "daerah_text", "mukim_text", "jenis_data", "format_data", "unjuranKoordinat_data", "sumber_data", "meta_data", "namaagensi", "namaprojek", "tarikhprojek", "jenisdataformat", "klasifikasidata"]
+PINJAM_SIG_KEYS = ["komponen_data", "kawasan", "tahun", "tujuan", "cacatan", "Setuju", "nama", "Tarikh"]
+
+PSEUDO_NEGERI = ("SEMENANJUNG MALAYSIA", "SABAH & SARAWAK")
+
+KOMPONEN_KATEGORI = [
+    ("DATA ASAS", [
+        ("Sempadan Negeri", "Sempadan Negeri"),
+        ("Sempadan Daerah", "Sempadan Daerah"),
+        ("Sempadan Mukim", "Sempadan Mukim"),
+        ("Nama Bandar/Pekan", "Nama Bandar / Pekan"),
+        ("Kontur", "Kontur"),
+        ("Cerun", "Cerun"),
+        ("DEM", "DEM"),
+        ("Titik Ketinggian", "Titik Ketinggian"),
+        ("Jalan", "Jalan"),
+        ("Jalan Keretapi", "Jalan Keretapi"),
+        ("Sungai", "Sungai"),
+    ]),
+    ("FASILITI", [
+        ("Sekolah", "Sekolah"),
+        ("Hospital", "Hospital"),
+        ("Klinik/Pusat Perubatan", "Klinik/Pusat Perubatan"),
+        ("Bangunan Kerajaan", "Bangunan Kerajaan"),
+        ("Rumah Ibadat", "Rumah Ibadat"),
+        ("Balai Polis", "Balai Polis"),
+        ("Balai Bomba", "Balai Bomba"),
+        ("Stesen KTM", "Stesen KTM"),
+    ]),
+    ("PERTANIAN", [
+        ("Guna Tanah", "Guna Tanah"),
+        ("Jenis Tanih", "Jenis Tanih"),
+        ("Agroklimatik", "Agroklimatik"),
+        ("Hujan", "Hujan"),
+        ("Litupan Tanah", "Litupan Tanah"),
+    ]),
+    ("PERHUTANAN", [
+        ("Kompartment", "Kompartment"),
+        ("Fungsi", "Fungsi"),
+        ("Sumber", "Sumber"),
+        ("Lembangan", "Lembangan"),
+        ("Empangan", "Empangan"),
+    ]),
+    ("GEOLOGI", [
+        ("Geomorfologi", "Geomorfologi"),
+        ("Lithologi", "Lithologi"),
+        ("Struktur", "Struktur"),
+        ("Landslide Prone Area", "Landslide Prone Area"),
+    ]),
+    ("PESISIR", [
+        ("Batimetri", "Batimetri"),
+        ("Geomorfologi_G", "Geomorfologi"),
+        ("Landform", "Landform"),
+        ("Pengangkutan", "Pengangkutan"),
+        ("Tumbuhan", "Tumbuhan"),
+    ]),
+    ("BANJIR", [
+        ("Stesen Hidrologi", "Stesen Hidrologi"),
+        ("Pusat Pemindahan", "Pusat Pemindahan"),
+        ("Flood Prone Area", "Flood Prone Area"),
+    ]),
+    ("SOSIO EKONOMI", [
+        ("Demografi/Penduduk", "Demografi/Penduduk"),
+    ]),
+    ("LAIN-LAIN", []),
+]
+
+
+def pinjam_kawasan_data(request):
+    """Parse per-category Komponen + Negeri/Daerah/Mukim/Tahun fields into a dict.
+
+    Each category keeps its own Komponen/Jenis Data, Negeri, Daerah, Mukim and
+    Tahun values so that no category overwrites or loses another category's data.
+    """
+    flat_komponen = [v for v in request.POST.getlist("komponen_data") if v]
+    komponen_lain = (request.POST.get("komponen_lain") or "").strip()
+
+    # Map each selectable komponen value back to its Kategori so the submitted
+    # flat checkbox list can be attributed to the correct category.
+    value_to_cat = {}
+    for kat, items in KOMPONEN_KATEGORI:
+        for value, _label in items:
+            value_to_cat[value] = kat
+
+    kawasan = {}
+    for idx, (kat, items) in enumerate(KOMPONEN_KATEGORI):
+        komponen = [v for v in flat_komponen if value_to_cat.get(v) == kat]
+        lain = komponen_lain if not items else ""
+        negeri = (request.POST.get(f"kat_{idx}_negeri") or "").strip()
+        daerah = (request.POST.get(f"kat_{idx}_daerah") or "").strip()
+        daerah_text = (request.POST.get(f"kat_{idx}_daerah_lain") or "").strip()
+        mukim = (request.POST.get(f"kat_{idx}_mukim") or "").strip()
+        mukim_text = (request.POST.get(f"kat_{idx}_mukim_lain") or "").strip()
+        tahun = re.sub(r"\D", "", request.POST.get(f"kat_{idx}_tahun") or "")[:4]
+        if daerah == "LAIN":
+            daerah = ""
+        else:
+            daerah_text = ""
+        if mukim == "LAIN":
+            mukim = ""
+        else:
+            mukim_text = ""
+        if not (komponen or lain or negeri or daerah or daerah_text or mukim or mukim_text):
+            continue
+        kawasan[kat] = {
+            "komponen": komponen,
+            "komponen_lain": lain,
+            "negeri": negeri,
+            "daerah": daerah,
+            "daerah_text": daerah_text,
+            "mukim": mukim,
+            "mukim_text": mukim_text,
+            "tahun": tahun,
+        }
+    return kawasan
+
+
+def kawasan_legacy_fields(kawasan):
+    """Mirror the first real-Negeri category into legacy FK fields."""
+    out = {"negeri": None, "daerah": None, "mukim": None, "daerah_text": None, "mukim_text": None}
+    for _kat, v in kawasan.items():
+        if not v.get("negeri") or v["negeri"] in PSEUDO_NEGERI:
+            continue
+        out["negeri"] = Negeri.objects.filter(nama__iexact=v["negeri"]).first()
+        d_name = v.get("daerah") or ""
+        if d_name and d_name != "Semua Daerah":
+            out["daerah"] = Daerah.objects.filter(nama__iexact=d_name).first()
+        out["daerah_text"] = v.get("daerah_text") or None
+        m_name = v.get("mukim") or ""
+        if m_name:
+            out["mukim"] = Mukim.objects.filter(nama__iexact=m_name).first()
+        out["mukim_text"] = v.get("mukim_text") or None
+        break
+    return out
+
+
+def kawasan_rows_from(saved):
+    """Template rows for the per-category kawasan table (saved = obj.kawasan or None)."""
+    rows = []
+    for idx, (kat, items) in enumerate(KOMPONEN_KATEGORI):
+        s = (saved or {}).get(kat) or {}
+        rows.append({
+            "idx": idx,
+            "kategori": kat,
+            "items": items,
+            "negeri": s.get("negeri") or "",
+            "daerah": s.get("daerah") or "",
+            "daerah_text": s.get("daerah_text") or "",
+            "mukim": s.get("mukim") or "",
+            "mukim_text": s.get("mukim_text") or "",
+            "tahun": s.get("tahun") or "",
+        })
+    return rows
+
+
+def kawasan_display_rows(obj):
+    """Display rows for the Tindakan popup table.
+
+    Preserves the Kategori -> Komponen / Jenis Data -> Negeri -> Daerah -> Mukim
+    -> Tahun relationship, resolving stored komponen keys to their labels.
+    """
+    kawasan = getattr(obj, "kawasan", None) or {}
+    label_map = {value: label for _kat, items in KOMPONEN_KATEGORI for value, label in items}
+    value_to_cat = {value: kat for kat, items in KOMPONEN_KATEGORI for value, _label in items}
+    flat_komponen = selected_values(obj.komponen_data)
+    komponen_lain = split_lain(obj.komponen_data)
+
+    rows = []
+    for kat, items in KOMPONEN_KATEGORI:
+        s = kawasan.get(kat) or {}
+        stored = s.get("komponen") or []
+        keys = stored if stored else [v for v in flat_komponen if value_to_cat.get(v) == kat]
+        labels = [label_map.get(k, k) for k in keys]
+        if not items and komponen_lain:
+            labels.append(komponen_lain)
+        negeri = s.get("negeri") or ""
+        daerah = s.get("daerah") or s.get("daerah_text") or ""
+        mukim = s.get("mukim") or s.get("mukim_text") or ""
+        tahun = s.get("tahun") or ""
+        if not (labels or negeri or daerah or mukim or tahun):
+            continue
+        rows.append({
+            "kategori": kat,
+            "komponen": ", ".join(labels) if labels else "-",
+            "negeri": negeri or "-",
+            "daerah": daerah or "-",
+            "mukim": mukim or "-",
+            "tahun": tahun or "-",
+        })
+    return rows
 
 
 def duplicate_submission(user, model, data, keys):
@@ -662,7 +852,11 @@ def user_login(request):
 
 
 def user_logout(request):
-    logout(request)
+    # Partial logout: clear the normal-user auth state only, so a separate
+    # admin login on the same browser session stays intact.
+    from .admin_auth import ADMIN_SESSION_PREFIX, preserve_keys
+
+    preserve_keys(request, (ADMIN_SESSION_PREFIX,))
     return redirect("login")
 
 
@@ -710,7 +904,6 @@ def serah_form_data(request):
         "mukim": Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
         "daerah_text": daerah_text,
         "mukim_text": mukim_text,
-        "indeks": request.POST.get("indeks"),
         "jenis_data": ", ".join(jenis) + ("  " + jenis_lain if jenis_lain else ""),
         "format_data": ", ".join(format_data) + ("  " + format_lain if format_lain else ""),
         "unjuranKoordinat_data": ", ".join(unjuran) + ("  " + unjuranKoordinat_lain if unjuranKoordinat_lain else ""),
@@ -756,7 +949,10 @@ def serah_prefill(obj):
         "meta_data": selected_values(obj.meta_data),
         "meta_lain": split_lain(obj.meta_data),
         "jenisdataformat": selected_values(obj.jenisdataformat),
-        "klasifikasidata": selected_values(obj.klasifikasidata),
+        "klasifikasidata": [
+            "Tidak Terhad" if v == "Tak Terhad" else v
+            for v in selected_values(obj.klasifikasidata)
+        ],
     }
 
 
@@ -764,33 +960,21 @@ def pinjam_form_data(request):
     """Parse submitted pinjaman form fields into a dict for create/update."""
     komponen = request.POST.getlist("komponen_data")
     komponen_lain = request.POST.get("komponen_lain")
+    kawasan = pinjam_kawasan_data(request)
 
-    daerah = request.POST.get("daerah")
-    daerah_text = None
-    if daerah == "LAIN":
-        daerah_text = request.POST.get("daerah_lain")
-        daerah = None
-    mukim = request.POST.get("mukim")
-    mukim_text = None
-    if mukim == "LAIN":
-        mukim_text = request.POST.get("mukim_lain")
-        mukim = None
-
-    return {
+    data = {
         "komponen_data": ", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
-        "negeri": Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
-        "daerah": Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
-        "mukim": Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
-        "daerah_text": daerah_text,
-        "mukim_text": mukim_text,
-        "indeks": request.POST.get("indeks"),
+        "kawasan": kawasan or None,
+        "tahun": next((v.get("tahun") for v in kawasan.values() if v.get("tahun")), None),
         "tujuan": request.POST.get("tujuan"),
         "cacatan": request.POST.get("cacatan"),
         "Setuju": bool(request.POST.get("Setuju")),
-        "nama": request.POST.get("nama"),
+        "nama": request.POST.get("nama") or applicant_info(request.user)[0],
         "Tarikh": request.POST.get("Tarikh"),
         "uploaded_file": request.FILES.get("file"),
     }
+    data.update(kawasan_legacy_fields(kawasan))
+    return data
 
 
 def pinjam_prefill(obj):
@@ -802,6 +986,7 @@ def pinjam_prefill(obj):
         "Setuju": obj.Setuju,
         "nama": obj.nama or "",
         "Tarikh": obj.Tarikh or "",
+        "tahun": obj.tahun or "",
     }
 
 
@@ -876,31 +1061,17 @@ def borang_serahan_edit(request, request_id):
 @login_required
 def borang_pinjaman(request):
     if request.method == "POST":
-        komponen = request.POST.getlist("komponen_data")
-        komponen_lain = request.POST.get("komponen_lain")
-        uploaded_file = request.FILES.get("file")
-
-        daerah = request.POST.get("daerah")
-        daerah_text = None
-        if daerah == "LAIN":
-            daerah_text = request.POST.get("daerah_lain")
-            daerah = None
-        mukim = request.POST.get("mukim")
-        mukim_text = None
-        if mukim == "LAIN":
-            mukim_text = request.POST.get("mukim_lain")
-            mukim = None
-
+        data = pinjam_form_data(request)
+        uploaded_file = data.pop("uploaded_file")
         sig = {
-            "komponen_data": ", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
-            "daerah_text": daerah_text or "",
-            "mukim_text": mukim_text or "",
-            "indeks": request.POST.get("indeks") or "",
-            "tujuan": request.POST.get("tujuan") or "",
-            "cacatan": request.POST.get("cacatan") or "",
-            "Setuju": bool(request.POST.get("Setuju")),
-            "nama": request.POST.get("nama") or "",
-            "Tarikh": request.POST.get("Tarikh") or "",
+            "komponen_data": data["komponen_data"],
+            "kawasan": str(data["kawasan"] or {}),
+            "tahun": data["tahun"] or "",
+            "tujuan": data["tujuan"] or "",
+            "cacatan": data["cacatan"] or "",
+            "Setuju": data["Setuju"],
+            "nama": data["nama"] or "",
+            "Tarikh": data["Tarikh"] or "",
         }
         if duplicate_submission(request.user, PinjamanRequest, sig, PINJAM_SIG_KEYS):
             return redirect("status")
@@ -909,20 +1080,9 @@ def borang_pinjaman(request):
             pemohon=request.user,
             namapemohon=applicant_info(request.user)[0],
             email=applicant_info(request.user)[1],
-            telefon=applicant_info(request.user)[2],
+            telefon=request.POST.get("telefon") or applicant_info(request.user)[2],
             bahagian=user_bahagian(request.user),
-            komponen_data=", ".join(komponen) + ("  " + komponen_lain if komponen_lain else ""),
-            negeri=Negeri.objects.filter(nama__iexact=request.POST.get("negeri")).first(),
-            daerah=Daerah.objects.filter(nama__iexact=daerah).first() if daerah else None,
-            mukim=Mukim.objects.filter(nama__iexact=mukim).first() if mukim else None,
-            daerah_text=daerah_text,
-            mukim_text=mukim_text,
-            indeks=request.POST.get("indeks"),
-            tujuan=request.POST.get("tujuan"),
-            cacatan=request.POST.get("cacatan"),
-            Setuju=bool(request.POST.get("Setuju")),
-            nama=request.POST.get("nama"),
-            Tarikh=request.POST.get("Tarikh"),
+            **data,
             uploaded_file=uploaded_file,
         )
         log_status(obj, "Borang Telah Dihantar", request.user)
@@ -937,6 +1097,7 @@ def borang_pinjaman(request):
         "applicant_name": applicant_name,
         "applicant_email": applicant_email,
         "applicant_phone": applicant_phone,
+        "kawasan_rows": kawasan_rows_from(None),
     })
 
 
@@ -972,6 +1133,7 @@ def borang_pinjaman_edit(request, request_id):
         "editing": True,
         "obj": obj,
         "prefill": pinjam_prefill(obj),
+        "kawasan_rows": kawasan_rows_from(obj.kawasan or {}),
     })
 
 
@@ -1119,6 +1281,7 @@ def request_detail(request, borang_type, request_id):
     annotate_steps(obj)
     return render(request, "_request_detail.html", {
         "r": obj,
+        "kawasan_display": kawasan_display_rows(obj) if obj.borang_type == "PINJAMAN" else [],
         "is_pengarah_bahagian": is_pengarah_bahagian(user),
         "is_bitg": is_bitg(user),
         "is_pic": is_pic(user),

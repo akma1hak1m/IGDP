@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'requests_app.admin_auth.AdminSessionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -109,9 +110,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
 ]
 
 
@@ -120,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/Kuala_Lumpur'
+TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
@@ -140,9 +138,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STORAGES = {
-    'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
-    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
@@ -156,8 +151,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'flaskapp123912@gmail.com'
-EMAIL_HOST_PASSWORD = 'pfxcdjmppoxwfxeb'  # app password
+EMAIL_HOST_USER = 'igdp@mysa.gov.my'
+EMAIL_HOST_PASSWORD = 'ivaj xejl ozit klsh'  # app password
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
@@ -176,15 +171,12 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # 2. Allow your domain for CSRF protection
 CSRF_TRUSTED_ORIGINS = [
     'https://igdp.mysa.gov.my',
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
 ]
 
 # 3. Optional but RECOMMENDED for HTTPS-only sites
 # These ensure cookies are only sent over HTTPS
-# Disabled when DEBUG so cookies work on plain HTTP localhost
-CSRF_COOKIE_SECURE = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 # 4. Make sure your domain is in ALLOWED_HOSTS
 ALLOWED_HOSTS = [
