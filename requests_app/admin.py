@@ -103,6 +103,29 @@ class UserProfileInline(admin.StackedInline):
 
 class UserAdminWithProfile(UserAdmin):
     inlines = [UserProfileInline]
+    list_display = ("username", "email", "full_name", "is_staff")
+    search_fields = ("username", "first_name", "email")
+    fieldsets = (
+        (None, {"fields": ("username", "password")}),
+        ("Personal info", {"fields": ("first_name", "email")}),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
+        ("Important dates", {"fields": ("last_login", "date_joined")}),
+    )
+
+    @admin.display(description="Full Name", ordering="first_name")
+    def full_name(self, obj):
+        return obj.get_full_name() or obj.first_name or obj.username
 
 
 custom_admin_site.register(User, UserAdminWithProfile)

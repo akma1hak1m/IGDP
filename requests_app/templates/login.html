@@ -45,7 +45,7 @@ html, body{
 
     {% if error %}
     <div class="error-popup" id="errorPopup">
-        ❌ Wrong username or password
+        ❌ Emel atau kata laluan salah
     </div>
     {% endif %}
 
@@ -55,11 +55,11 @@ html, body{
         {% csrf_token %}
 
         <div class="form-group">
-            <input type="text" name="username" placeholder="Username" required>
+            <input type="text" name="email" placeholder="Emel" required>
         </div>
 
         <div class="form-group">
-            <input type="password" name="password" placeholder="Password" required>
+            <input type="password" name="password" placeholder="Kata Laluan" required>
         </div>
 
         <button type="submit" class="submit-btn login-btn">

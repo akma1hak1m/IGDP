@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{% static 'css/templatemo-nexaverse.css' %}">
 <style>
 html, body { overflow: hidden; height: 100%; margin: 0; padding-top: 16px; box-sizing: border-box; }
-.header { margin-bottom: 14px !important; }
+.header { margin-bottom: 24px !important; }
 .hero-logo { width: 100px !important; margin-bottom: 6px !important; }
 .brand-name { font-size: 18px !important; letter-spacing: 2px !important; margin-bottom: 1px !important; margin-top: 1px !important; }
 .tagline { font-size: 11px !important; letter-spacing: 2px !important; }
@@ -62,8 +62,7 @@ html, body { overflow: hidden; height: 100%; margin: 0; padding-top: 16px; box-s
 {% csrf_token %}
 
 <div class="form-group"><input type="text" name="fullname" placeholder="Nama Penuh" required></div>
-<div class="form-group"><input type="text" name="username" placeholder="Username" required></div>
-<div class="form-group"><input type="email" name="email" placeholder="Emel" required></div>
+<div class="form-group"><input type="text" name="email" placeholder="Emel" required></div>
 <div class="form-group"><input type="text" name="telefon" placeholder="No. Telefon"></div>
 <div class="form-group">
     <select name="bahagian" required>

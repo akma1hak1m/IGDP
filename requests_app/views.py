@@ -837,9 +837,13 @@ def applicant_info(user):
 def user_login(request):
     error = False
     if request.method == "POST":
-        username = request.POST.get("username")
+        identifier = (request.POST.get("email") or request.POST.get("username") or "").strip()
         password = request.POST.get("password")
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, username=identifier, password=password)
+        if not user:
+            existing = User.objects.filter(email__iexact=identifier).first()
+            if existing:
+                user = authenticate(request, username=existing.username, password=password)
         if user:
             login(request, user)
             LoginLog.objects.create(user=user)
@@ -1689,16 +1693,12 @@ def register_page(request):
         return redirect("home")
     if request.method == "POST":
         fullname = request.POST.get("fullname", "").strip()
-        username = request.POST.get("username", "").strip()
         email = request.POST.get("email", "").strip().lower()
         password = request.POST.get("password", "")
         confirm = request.POST.get("confirm", "")
 
-        if not fullname or not username or not email:
+        if not fullname or not email:
             messages.error(request, "Sila lengkapkan semua maklumat.")
-            return redirect("register")
-        if not email.endswith("@mysa.gov.my"):
-            messages.error(request, "Hanya emel @mysa.gov.my dibenarkan untuk mendaftar.")
             return redirect("register")
         if password != confirm:
             messages.error(request, "Kata laluan tidak sepadan.")
@@ -1706,11 +1706,8 @@ def register_page(request):
         if len(password) < 8:
             messages.error(request, "Kata laluan minimum 8 aksara.")
             return redirect("register")
-        if User.objects.filter(username__iexact=username).exists():
-            messages.error(request, "Username telah digunakan.")
-            return redirect("register")
-        if User.objects.filter(email__iexact=email).exists():
-            messages.error(request, "Email telah digunakan.")
+        if User.objects.filter(username__iexact=email).exists() or User.objects.filter(email__iexact=email).exists():
+            messages.error(request, "Emel telah digunakan.")
             return redirect("register")
 
         bahagian = Bahagian.objects.filter(id=request.POST.get("bahagian")).first()
@@ -1718,7 +1715,7 @@ def register_page(request):
             messages.error(request, "Sila pilih bahagian.")
             return redirect("register")
 
-        user = User.objects.create_user(username=username, email=email, password=password, first_name=fullname)
+        user = User.objects.create_user(username=email, email=email, password=password, first_name=fullname)
         UserProfile.objects.update_or_create(
             user=user,
             defaults={
